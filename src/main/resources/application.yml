@@ -8,3 +8,6 @@ spring:
 processor:
   host: ${HOSTPROCESSOR:https://4185-2803-9810-4638-2810-3000-cd2c-ac08-872a.ngrok-free.app}
   limitAudio: 15
+
+server:
+  port: 8181

@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  services:
+  api-menssage-processor-api:
     container_name: api-menssage-processor-api
     build:
       context: ..
