@@ -15,12 +15,13 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class WhatsAppGateway {
 
+    public static final String HOST_URL = "http://92.113.33.84:8080";
+
     public WhatsAppResponse sendMessage(String to, String message, String token, String instanceName) throws Exception {
         final RestTemplate restTemplate = new RestTemplate();
 
-
         // Monta URL de destino com o nome da instância
-        String url = "http://92.113.33.84:8080/message/sendText/" + instanceName;
+        String url = HOST_URL + "/message/sendText/" + instanceName;
         log.info("[ENVIANDO] Enviando mensagem para {} via {}", to, url);
 
         // Monta headers
@@ -44,6 +45,61 @@ public class WhatsAppGateway {
         } catch (Exception e) {
             log.error("[ERRO] Falha ao enviar mensagem para {}: {}", to, e.getMessage(), e);
             return null;
+        }
+    }
+
+    public void typingMessage(String number, Integer delay, String token, String instanceName) {
+        final RestTemplate restTemplate = new RestTemplate();
+
+        // Monta URL com o nome da instância
+        String url = HOST_URL + "/chat/sendPresence/" + instanceName;
+        log.info("[TYPING] Enviando sinal de 'digitando' para {} via {}", number, url);
+
+        // Headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("apikey", token);
+
+        // Payload
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("number", number);
+        payload.put("delay", delay);
+        payload.put("presence", "composing"); // "composing" = digitando
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+
+        try {
+            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+            log.info("[TYPING] Sinal enviado com sucesso para {} - Status: {}", number, response.getStatusCode());
+        } catch (Exception e) {
+            log.error("[TYPING][ERRO] Falha ao enviar presença para {}: {}", number, e.getMessage(), e);
+        }
+    }
+
+    public void sendAudio(String to, String base64Audio, String token, String instanceName) {
+        final RestTemplate restTemplate = new RestTemplate();
+
+        // Monta URL de destino
+        String url = HOST_URL + "/message/sendWhatsAppAudio/" + instanceName;
+        log.info("[AUDIO] Enviando áudio para {} via {}", to, url);
+
+        // Headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("apikey", token);
+
+        // Corpo da requisição
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("number", to);
+        payload.put("audio", base64Audio);
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+
+        try {
+            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+            log.info("[AUDIO] Áudio enviado com sucesso para {} - Status: {}", to, response.getStatusCode());
+        } catch (Exception e) {
+            log.error("[AUDIO][ERRO] Falha ao enviar áudio para {}: {}", to, e.getMessage(), e);
         }
     }
 }

@@ -1,6 +1,8 @@
 package apiMensagem.processor.apiMenagemProcessor.controller;
 
+import apiMensagem.processor.apiMenagemProcessor.dto.AudioRequest;
 import apiMensagem.processor.apiMenagemProcessor.dto.MessageRequest;
+import apiMensagem.processor.apiMenagemProcessor.dto.TypingRequest;
 import apiMensagem.processor.apiMenagemProcessor.dto.messagePayload.WebhookMessagePayload;
 import apiMensagem.processor.apiMenagemProcessor.useCase.ReceiveMessageUseCase;
 import apiMensagem.processor.apiMenagemProcessor.useCase.SendMessageUseCase;
@@ -9,7 +11,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -41,5 +42,17 @@ public class WhatsAppControllerImpl implements WhatsAppController {
 
         receiveMessageUseCase.receiveMessage(payload);
         return ResponseEntity.ok().build();
+    }
+
+    @Override
+    public ResponseEntity<Void> typing(TypingRequest typingRequest) {
+
+        sendMessageUseCase.typingMessage(typingRequest);
+        return ResponseEntity.ok().build();
+    }
+
+    @Override
+    public ResponseEntity<Void> sendAudio(AudioRequest request) {
+        return null;
     }
 }
