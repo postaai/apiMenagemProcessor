@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  services:
+    container_name: api-menssage-processor-api
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "8181:8181"

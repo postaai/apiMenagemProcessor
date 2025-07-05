@@ -53,6 +53,7 @@ public class WhatsAppControllerImpl implements WhatsAppController {
 
     @Override
     public ResponseEntity<Void> sendAudio(AudioRequest request) {
-        return null;
+        sendMessageUseCase.sendAudio(request);
+        return ResponseEntity.ok().build();
     }
 }
