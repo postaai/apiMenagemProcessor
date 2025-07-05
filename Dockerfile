@@ -1,3 +1,4 @@
+# Etapa de build
 FROM eclipse-temurin:24-jdk as builder
 
 WORKDIR /app
@@ -5,7 +6,7 @@ COPY . .
 
 RUN ./gradlew bootJar
 
-# Imagem final (pequena)
+# Etapa final: apenas runtime
 FROM eclipse-temurin:24-jre
 
 WORKDIR /app
