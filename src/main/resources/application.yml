@@ -1,0 +1,6 @@
+spring:
+  data:
+    mongodb:
+      uri: ${MONGO_DATABASE_URI:mongodb+srv://apiprodutos:FQGQc80yZxQ341n0@ia-teste.vpt51es.mongodb.net/?retryWrites=true&w=majority&appName=post-ai-database}
+      database: ia-teste
+      auto-index-creation: true
