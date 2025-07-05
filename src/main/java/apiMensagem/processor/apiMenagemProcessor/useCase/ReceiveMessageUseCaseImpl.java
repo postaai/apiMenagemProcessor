@@ -1,14 +1,15 @@
 package apiMensagem.processor.apiMenagemProcessor.useCase;
 
 import apiMensagem.processor.apiMenagemProcessor.dto.messagePayload.WebhookMessagePayload;
-import apiMensagem.processor.apiMenagemProcessor.entity.OrganizationsEntity;
 import apiMensagem.processor.apiMenagemProcessor.gateway.ApiProcessorGateway;
+import apiMensagem.processor.apiMenagemProcessor.gateway.WhatsAppGateway;
 import apiMensagem.processor.apiMenagemProcessor.repository.OrganizationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
+import java.nio.file.FileSystemNotFoundException;
 
 @Slf4j
 @Service
@@ -17,6 +18,11 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
 
     private final OrganizationRepository organizationRepository;
     private final ApiProcessorGateway apiProcessorGateway;
+    private final WhatsAppGateway whatsAppGateway;
+
+    @Value("${processor.limitAudio}")
+    private Integer limitAudio;
+
 
     @Override
     public void receiveMessage(WebhookMessagePayload payload) {
@@ -27,31 +33,51 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
             }
 
             String messageType = payload.getData().getMessageType();
-
-            if (!"conversation".equalsIgnoreCase(messageType)) {
-                log.info("Mensagem ignorada. Tipo de mensagem não suportado: {}", messageType);
-                return;
-            }
-
-            String remoteJid = payload.getData().getKey() != null ? payload.getData().getKey().getRemoteJid() : null;
-            String conversation = payload.getData().getMessage().getConversation();
             String orgId = payload.getInstance();
+            String remoteJid = payload.getData().getKey() != null ? payload.getData().getKey().getRemoteJid() : null;
 
-            if (remoteJid == null || conversation == null || orgId == null) {
+            if (remoteJid == null || orgId == null) {
                 log.warn("Dados incompletos no payload.");
                 return;
             }
 
             remoteJid = remoteJid.replace("@s.whatsapp.net", "");
 
-            Optional<OrganizationsEntity> organizationOpt = organizationRepository.findByorgId(orgId);
-            if (organizationOpt.isEmpty()) {
-                log.warn("Organização com orgId [{}] não encontrada", orgId);
-                return;
-            }
+            var org = organizationRepository.findByorgId(orgId)
+                    .orElseThrow(FileSystemNotFoundException::new);
 
-            apiProcessorGateway.sendTextMessage(remoteJid, orgId, conversation);
-            log.info("Mensagem de texto processada: [{}] - [{}]", remoteJid, conversation);
+            String token = org.token();
+            String instanceName = org.instanceName(); // ajuste o nome do campo conforme necessário
+
+            switch (messageType) {
+                case "conversation":
+                    String conversation = payload.getData().getMessage().getConversation();
+                    apiProcessorGateway.sendTextMessage(remoteJid, orgId, conversation);
+                    log.info("Mensagem de texto enviada: [{}] - [{}]", remoteJid, conversation);
+                    break;
+
+                case "audioMessage":
+                    String audioUrl = payload.getData().getMessage().getAudioMessage().getUrl();
+                    var audioMessage = payload.getData().getMessage().getAudioMessage();
+                    if (payload.getData().getMessage().getAudioMessage().getSeconds() < limitAudio) {
+                        if (audioUrl != null) {
+                            apiProcessorGateway.sendAudioMessage(remoteJid, orgId, audioMessage.getUrl(), audioMessage.getMimetype(), audioMessage.getMediaKey());
+                            log.info("Áudio enviado: [{}] - [{}]", remoteJid, audioUrl);
+                        } else {
+                            log.warn("URL do áudio ausente.");
+                        }
+                    }else {
+                        String mensagemPadrao = "Recebemos seu áudio! 😊 Para conseguirmos te ajudar melhor, envie áudios com até " + limitAudio + " segundos.";
+                        whatsAppGateway.sendMessage(remoteJid, mensagemPadrao, token, instanceName);
+                    }
+                    break;
+
+                default:
+                    String mensagemPadrao = "Desculpe, ainda não entendi esse tipo de mensagem. No momento só aceitamos mensagens de texto ou áudio.";
+                    whatsAppGateway.sendMessage(remoteJid, mensagemPadrao, token, instanceName);
+                    log.info("Mensagem padrão enviada para [{}] - [{}]", remoteJid, mensagemPadrao);
+                    break;
+            }
 
         } catch (Exception e) {
             log.error("Erro ao processar mensagem recebida: {}", e.getMessage(), e);

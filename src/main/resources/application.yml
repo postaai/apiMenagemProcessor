@@ -4,3 +4,7 @@ spring:
       uri: ${MONGO_DATABASE_URI:mongodb+srv://apiprodutos:FQGQc80yZxQ341n0@ia-teste.vpt51es.mongodb.net/?retryWrites=true&w=majority&appName=post-ai-database}
       database: ia-teste
       auto-index-creation: true
+
+processor:
+  host: ${HOSTPROCESSOR:https://4185-2803-9810-4638-2810-3000-cd2c-ac08-872a.ngrok-free.app}
+  limitAudio: 15
