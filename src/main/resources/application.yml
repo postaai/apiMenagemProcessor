@@ -6,7 +6,7 @@ spring:
       auto-index-creation: true
 
 processor:
-  host: ${HOSTPROCESSOR:http://localhost:5000}
+  host: ${HOSTPROCESSOR:http://92.113.33.84:5000}
   limitAudio: 15
 
 server:
