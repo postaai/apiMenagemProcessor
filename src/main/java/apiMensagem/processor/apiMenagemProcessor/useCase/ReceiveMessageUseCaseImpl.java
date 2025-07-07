@@ -23,7 +23,6 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
     @Value("${processor.limitAudio}")
     private Integer limitAudio;
 
-
     @Override
     public void receiveMessage(WebhookMessagePayload payload) {
         try {
@@ -47,7 +46,7 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
                     .orElseThrow(FileSystemNotFoundException::new);
 
             String token = org.token();
-            String instanceName = org.instanceName(); // ajuste o nome do campo conforme necessário
+            String instanceName = org.instanceName();
 
             switch (messageType) {
                 case "conversation":
@@ -57,25 +56,30 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
                     break;
 
                 case "audioMessage":
-                    String audioUrl = payload.getData().getMessage().getAudioMessage().getUrl();
                     var audioMessage = payload.getData().getMessage().getAudioMessage();
-                    if (payload.getData().getMessage().getAudioMessage().getSeconds() < limitAudio) {
+                    String audioUrl = audioMessage.getUrl();
+                    if (audioMessage.getSeconds() < limitAudio) {
                         if (audioUrl != null) {
-                            apiProcessorGateway.sendAudioMessage(remoteJid, orgId, audioMessage.getUrl(), audioMessage.getMimetype(), audioMessage.getMediaKey());
+                            apiProcessorGateway.sendAudioMessage(remoteJid, orgId, audioUrl, audioMessage.getMimetype(), audioMessage.getMediaKey());
                             log.info("Áudio enviado: [{}] - [{}]", remoteJid, audioUrl);
                         } else {
                             log.warn("URL do áudio ausente.");
                         }
-                    }else {
+                    } else {
                         String mensagemPadrao = "Recebemos seu áudio! 😊 Para conseguirmos te ajudar melhor, envie áudios com até " + limitAudio + " segundos.";
                         whatsAppGateway.sendMessage(remoteJid, mensagemPadrao, token, instanceName);
                     }
                     break;
 
+                case "imageMessage":
+                case "videoMessage":
+                    String mensagemDesculpa = "Desculpe, ainda não entendi esse tipo de mensagem. No momento só aceitamos mensagens de texto ou áudio.";
+                    whatsAppGateway.sendMessage(remoteJid, mensagemDesculpa, token, instanceName);
+                    log.info("Mensagem de tipo não suportado respondida para [{}] - [{}]", remoteJid, mensagemDesculpa);
+                    break;
+
                 default:
-                    String mensagemPadrao = "Desculpe, ainda não entendi esse tipo de mensagem. No momento só aceitamos mensagens de texto ou áudio.";
-                    whatsAppGateway.sendMessage(remoteJid, mensagemPadrao, token, instanceName);
-                    log.info("Mensagem padrão enviada para [{}] - [{}]", remoteJid, mensagemPadrao);
+                    log.info("Mensagem ignorada. Tipo não processado: {}", messageType);
                     break;
             }
 
