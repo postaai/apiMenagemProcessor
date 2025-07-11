@@ -51,16 +51,18 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
             switch (messageType) {
                 case "conversation":
                     String conversation = payload.getData().getMessage().getConversation();
-                    apiProcessorGateway.sendTextMessage(remoteJid, orgId, conversation);
+                    String contactName = payload.getData().getPushName() != null ? payload.getData().getPushName() : "Desconhecido";
+                    apiProcessorGateway.sendTextMessage(remoteJid, orgId, conversation, contactName);
                     log.info("Mensagem de texto enviada: [{}] - [{}]", remoteJid, conversation);
                     break;
 
                 case "audioMessage":
                     var audioMessage = payload.getData().getMessage().getAudioMessage();
                     String audioUrl = audioMessage.getUrl();
+                    String contactNameAudio = payload.getData().getPushName() != null ? payload.getData().getPushName() : "Desconhecido";
                     if (audioMessage.getSeconds() < limitAudio) {
                         if (audioUrl != null) {
-                            apiProcessorGateway.sendAudioMessage(remoteJid, orgId, audioUrl, audioMessage.getMimetype(), audioMessage.getMediaKey());
+                            apiProcessorGateway.sendAudioMessage(remoteJid, orgId, audioUrl, audioMessage.getMimetype(), audioMessage.getMediaKey(), contactNameAudio);
                             log.info("Áudio enviado: [{}] - [{}]", remoteJid, audioUrl);
                         } else {
                             log.warn("URL do áudio ausente.");

@@ -18,7 +18,7 @@ public class ApiProcessorGateway {
     @Value("${processor.host}")
     private String hostProcessor;
 
-    public void sendTextMessage(String userId, String orgId, String content) {
+    public void sendTextMessage(String userId, String orgId, String content, String contactName) {
         RestTemplate restTemplate = new RestTemplate();
 
         // Criar headers
@@ -29,6 +29,7 @@ public class ApiProcessorGateway {
         Map<String, Object> body = new HashMap<>();
         body.put("userId", userId);
         body.put("orgId", orgId);
+        body.put("contactName", contactName);
         body.put("content", content);
 
         // Criar request
@@ -42,7 +43,7 @@ public class ApiProcessorGateway {
         }
     }
 
-    public void sendAudioMessage(String userId, String orgId, String urlAudio, String mimetype, String mediaKey){
+    public void sendAudioMessage(String userId, String orgId, String urlAudio, String mimetype, String mediaKey, String contactName){
         RestTemplate restTemplate = new RestTemplate();
 
         // Criar headers
@@ -56,6 +57,7 @@ public class ApiProcessorGateway {
         body.put("mimetype", mimetype);
         body.put("orgId", orgId);
         body.put("userId", userId);
+        body.put("contactName", contactName);
 
         // Criar request
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
