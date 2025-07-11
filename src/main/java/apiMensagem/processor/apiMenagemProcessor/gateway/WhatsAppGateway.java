@@ -4,9 +4,14 @@ import apiMensagem.processor.apiMenagemProcessor.dto.WhatsAppResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -17,12 +22,17 @@ public class WhatsAppGateway {
 
     public static final String HOST_URL = "http://92.113.33.84:8080";
 
+    @Retryable(
+            value = {HttpServerErrorException.class, HttpClientErrorException.class, SocketTimeoutException.class},
+            maxAttemptsExpression = "${whatsapp.retry.maxAttempts:5}",
+            backoff = @Backoff(delay = 2000, multiplier = 2)
+    )
     public WhatsAppResponse sendMessage(String to, String message, String token, String instanceName) throws Exception {
         final RestTemplate restTemplate = new RestTemplate();
 
         // Monta URL de destino com o nome da instância
         String url = HOST_URL + "/message/sendText/" + instanceName;
-        log.info("[ENVIANDO] Enviando mensagem para {} via {}", to, url);
+        log.info("[ENVIANDO] Enviando mensagem: {}, para {} via {}",message, to, url);
 
         // Monta headers
         HttpHeaders headers = new HttpHeaders();
@@ -76,6 +86,11 @@ public class WhatsAppGateway {
         }
     }
 
+    @Retryable(
+            value = {HttpServerErrorException.class, HttpClientErrorException.class, SocketTimeoutException.class},
+            maxAttemptsExpression = "${whatsapp.retry.maxAttempts:5}",
+            backoff = @Backoff(delay = 2000, multiplier = 2)
+    )
     public void sendAudio(String to, String base64Audio, String token, String instanceName) {
         final RestTemplate restTemplate = new RestTemplate();
 
