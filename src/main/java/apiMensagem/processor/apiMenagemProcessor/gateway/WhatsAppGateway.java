@@ -21,7 +21,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class WhatsAppGateway {
 
-    public static final String HOST_URL = "http://92.113.33.84:8080";
+    public static final String HOST_URL = "https://vision2.visionaitech.com.br";
 
     @Retryable(
             value = {HttpServerErrorException.class, HttpClientErrorException.class, SocketTimeoutException.class},
