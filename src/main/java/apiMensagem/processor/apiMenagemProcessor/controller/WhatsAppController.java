@@ -1,15 +1,16 @@
 package apiMensagem.processor.apiMenagemProcessor.controller;
 
-import apiMensagem.processor.apiMenagemProcessor.dto.AudioRequest;
-import apiMensagem.processor.apiMenagemProcessor.dto.MessageRequest;
-import apiMensagem.processor.apiMenagemProcessor.dto.TypingRequest;
+import apiMensagem.processor.apiMenagemProcessor.dto.*;
 import apiMensagem.processor.apiMenagemProcessor.dto.messagePayload.WebhookMessagePayload;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+
+import java.util.List;
 
 @Tag(name = "WhatsApp", description = "WhatsApp Controller")
 public interface WhatsAppController {
@@ -29,4 +30,12 @@ public interface WhatsAppController {
     @Operation(summary = "sendAudio")
     @PostMapping("/send-audio")
     ResponseEntity<Void> sendAudio(@RequestBody AudioRequest request);
+
+    @Operation(summary = "findGroups")
+    @PostMapping("/find-groups")
+    ResponseEntity<List<WhatsAppGroupResponse>> findGroups(@Parameter(description = "ID da organização") String orgId, @Parameter(description = "Incluir participantes") boolean participants);
+
+    @Operation(summary = "sendLocation")
+    @PostMapping("/send-location")
+    ResponseEntity<Void> sendLocation(@RequestBody LocationRequest request);
 }

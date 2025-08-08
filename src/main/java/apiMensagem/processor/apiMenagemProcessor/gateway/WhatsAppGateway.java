@@ -1,6 +1,9 @@
 package apiMensagem.processor.apiMenagemProcessor.gateway;
 
+import apiMensagem.processor.apiMenagemProcessor.dto.WhatsAppGroupResponse;
 import apiMensagem.processor.apiMenagemProcessor.dto.WhatsAppResponse;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
@@ -14,6 +17,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.net.SocketTimeoutException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -100,6 +104,64 @@ public class WhatsAppGateway {
 
         ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
         log.info("[AUDIO] Áudio enviado com sucesso para {} - Status: {}", to, response.getStatusCode());
+    }
+
+    @Retryable(
+            value = {HttpServerErrorException.class, HttpClientErrorException.class, SocketTimeoutException.class},
+            maxAttemptsExpression = "${whatsapp.retry.maxAttempts:5}",
+            backoff = @Backoff(delay = 2000, multiplier = 2)
+    )
+    public WhatsAppResponse sendLocation(String to, String name, String address, double latitude, double longitude, String token, String instanceName) throws Exception {
+        final RestTemplate restTemplate = new RestTemplate();
+
+        String url = HOST_URL + "/message/sendLocation/" + instanceName;
+        log.info("[ENVIANDO] Enviando localização: {}, {}, {} para {} via {}", name, address, latitude + "," + longitude, to, url);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("apikey", token);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("number", to);
+        payload.put("name", name);
+        payload.put("address", address);
+        payload.put("latitude", latitude);
+        payload.put("longitude", longitude);
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+
+        ResponseEntity<WhatsAppResponse> response = restTemplate.exchange(
+                url, HttpMethod.POST, request, WhatsAppResponse.class
+        );
+
+        log.info("[SUCESSO] Localização enviada para {} - Status: {}", to, response.getStatusCode());
+        return response.getBody();
+    }
+
+    public List<WhatsAppGroupResponse> fetchAllGroups(String token, String instanceName, boolean getParticipants) throws Exception {
+        final RestTemplate restTemplate = new RestTemplate();
+        String url = HOST_URL + "/group/fetchAllGroups/" + instanceName + "?getParticipants=" + getParticipants;
+        log.info("[FETCH GROUPS] Buscando grupos para {} via {}", instanceName, url);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("apikey", token);
+
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                url, HttpMethod.GET, request, String.class
+        );
+
+        log.info("[FETCH GROUPS] Resposta recebida - Status: {}", response.getStatusCode());
+        String responseBody = response.getBody();
+        log.info("groups: {}", responseBody);
+        ObjectMapper mapper = new ObjectMapper();
+        var result = mapper.readValue(responseBody, new TypeReference<>() {
+        });
+
+        log.info("result: {}", result);
+
+        return (List<WhatsAppGroupResponse>) result;
     }
 
     @Recover

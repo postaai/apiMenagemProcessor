@@ -1,8 +1,8 @@
 package apiMensagem.processor.apiMenagemProcessor.useCase;
 
-import apiMensagem.processor.apiMenagemProcessor.dto.AudioRequest;
-import apiMensagem.processor.apiMenagemProcessor.dto.MessageRequest;
-import apiMensagem.processor.apiMenagemProcessor.dto.TypingRequest;
+import apiMensagem.processor.apiMenagemProcessor.dto.*;
+
+import java.util.List;
 
 public interface SendMessageUseCase {
 
@@ -11,4 +11,8 @@ public interface SendMessageUseCase {
     void typingMessage(TypingRequest request);
 
     void sendAudio(AudioRequest request);
+
+    void sendLocation(LocationRequest request);
+
+    List<WhatsAppGroupResponse> getWhatsAppGroups(String orgId, boolean participants);
 }

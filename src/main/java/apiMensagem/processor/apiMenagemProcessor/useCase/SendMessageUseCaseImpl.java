@@ -1,14 +1,13 @@
 package apiMensagem.processor.apiMenagemProcessor.useCase;
 
-import apiMensagem.processor.apiMenagemProcessor.dto.AudioRequest;
-import apiMensagem.processor.apiMenagemProcessor.dto.MessageRequest;
-import apiMensagem.processor.apiMenagemProcessor.dto.TypingRequest;
+import apiMensagem.processor.apiMenagemProcessor.dto.*;
 import apiMensagem.processor.apiMenagemProcessor.gateway.WhatsAppGateway;
 import apiMensagem.processor.apiMenagemProcessor.repository.OrganizationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.FileSystemNotFoundException;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -56,5 +55,31 @@ public class SendMessageUseCaseImpl implements SendMessageUseCase {
             throw new FileSystemNotFoundException();
         }
 
+    }
+
+    @Override
+    public void sendLocation(LocationRequest request) {
+
+        var organization = repository.findByorgId(request.orgId())
+                .orElseThrow(FileSystemNotFoundException::new);
+
+        try {
+            whatsAppGateway.sendLocation(request.userId(), request.name(), request.address(), request.latitude(), request.longitude(), organization.token(), organization.instanceName());
+        } catch (Exception e) {
+            throw new FileSystemNotFoundException();
+        }
+    }
+
+    @Override
+    public List<WhatsAppGroupResponse> getWhatsAppGroups(String orgId, boolean participants) {
+
+        var organization = repository.findByorgId(orgId)
+                .orElseThrow(FileSystemNotFoundException::new);
+
+        try {
+            return whatsAppGateway.fetchAllGroups(organization.token(), organization.instanceName(), participants);
+        } catch (Exception e) {
+            throw new FileSystemNotFoundException();
+        }
     }
 }

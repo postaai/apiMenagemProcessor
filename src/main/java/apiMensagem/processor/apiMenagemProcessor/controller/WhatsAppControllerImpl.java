@@ -1,8 +1,6 @@
 package apiMensagem.processor.apiMenagemProcessor.controller;
 
-import apiMensagem.processor.apiMenagemProcessor.dto.AudioRequest;
-import apiMensagem.processor.apiMenagemProcessor.dto.MessageRequest;
-import apiMensagem.processor.apiMenagemProcessor.dto.TypingRequest;
+import apiMensagem.processor.apiMenagemProcessor.dto.*;
 import apiMensagem.processor.apiMenagemProcessor.dto.messagePayload.WebhookMessagePayload;
 import apiMensagem.processor.apiMenagemProcessor.useCase.ReceiveMessageUseCase;
 import apiMensagem.processor.apiMenagemProcessor.useCase.SendMessageUseCase;
@@ -13,6 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RequiredArgsConstructor
 @RestController
@@ -54,6 +54,18 @@ public class WhatsAppControllerImpl implements WhatsAppController {
     @Override
     public ResponseEntity<Void> sendAudio(AudioRequest request) {
         sendMessageUseCase.sendAudio(request);
+        return ResponseEntity.ok().build();
+    }
+
+    @Override
+    public ResponseEntity<List<WhatsAppGroupResponse>> findGroups(String orgId, boolean participants) {
+       var groups = sendMessageUseCase.getWhatsAppGroups(orgId, participants);
+        return ResponseEntity.ok(groups);
+    }
+
+    @Override
+    public ResponseEntity<Void> sendLocation(LocationRequest request) {
+        sendMessageUseCase.sendLocation(request);
         return ResponseEntity.ok().build();
     }
 }
