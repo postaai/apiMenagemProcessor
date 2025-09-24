@@ -6,9 +6,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -22,6 +22,16 @@ public interface WhatsAppController {
     @Operation(summary = "Webhook de recebimento de mensagens")
     @PostMapping("/webhook/receive-message")
     ResponseEntity<Void> receiveMessage(@RequestBody WebhookMessagePayload payload);
+
+    @Operation(summary = "Webhook de recebimento de mensagens meta")
+    @PostMapping("/webhook/receive-message/meta")
+    ResponseEntity<Void> receiveMessageMeta(@RequestBody MetaWhatsAppWebhookPayload payload);
+
+    @GetMapping(value = "/webhook/receive-message/meta", produces = MediaType.TEXT_PLAIN_VALUE)
+     ResponseEntity<String> verifyMetaWebhook(
+            @RequestParam(name = "hub.mode", required = false) String mode,
+            @RequestParam(name = "hub.verify_token", required = false) String token,
+            @RequestParam(name = "hub.challenge", required = false) String challenge);
 
     @Operation(summary = "typing")
     @PostMapping("/typing")
@@ -38,4 +48,8 @@ public interface WhatsAppController {
     @Operation(summary = "sendLocation")
     @PostMapping("/send-location")
     ResponseEntity<Void> sendLocation(@RequestBody LocationRequest request);
+
+    @Operation(summary = "generateQRCode")
+    @GetMapping("/generate-qrcode/{orgId}")
+    ResponseEntity<QrCodePayload> generateQRCode(@Parameter(description = "ID da organização") @PathVariable String orgId);
 }

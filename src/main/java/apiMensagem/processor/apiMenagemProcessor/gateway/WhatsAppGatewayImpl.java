@@ -1,7 +1,6 @@
 package apiMensagem.processor.apiMenagemProcessor.gateway;
 
-import apiMensagem.processor.apiMenagemProcessor.dto.WhatsAppGroupResponse;
-import apiMensagem.processor.apiMenagemProcessor.dto.WhatsAppResponse;
+import apiMensagem.processor.apiMenagemProcessor.dto.*;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +22,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class WhatsAppGateway {
+public class WhatsAppGatewayImpl {
 
     public static final String HOST_URL = "https://vision2.visionaitech.com.br";
 
@@ -162,6 +161,68 @@ public class WhatsAppGateway {
         log.info("result: {}", result);
 
         return (List<WhatsAppGroupResponse>) result;
+    }
+
+    public void deleteInstance(String instanceName) {
+        final RestTemplate restTemplate = new RestTemplate();
+        String url = HOST_URL + "/instance/delete/" + instanceName;
+        log.info("[DELETE INSTANCE] Deletando instância: {} via {}", instanceName, url);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("apikey", "vision-api-key");
+
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url, HttpMethod.DELETE, request, String.class
+            );
+            log.info("[DELETE INSTANCE] Instância {} deletada com sucesso - Status: {}", instanceName, response.getStatusCode());
+        } catch (Exception e) {
+            log.error("[DELETE INSTANCE][ERRO] Falha ao deletar instância {}: {}", instanceName, e.getMessage(), e);
+        }
+    }
+
+    public InstanceResponse createInstance(String token, String instanceName, String number){
+        final RestTemplate restTemplate = new RestTemplate();
+        String url = HOST_URL + "/instance/create";
+        log.info("[CREATE INSTANCE] Criando instância: {} via {}", instanceName, url);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("apikey", "vision-api-key"); // se quiser, use `headers.set("apikey", token);`
+
+        // Webhook config
+        Webhook webhook = Webhook.builder()
+                .url("https://vision2.visionaitech.com.br/api-message-processor/api/message/webhook/receive-message")
+                .byEvents(false)
+                .base64(false)
+                .headers(Map.of("Content-Type", "application/json"))
+                .events(List.of("MESSAGES_UPSERT"))
+                .build();
+
+        // Payload config
+        CreateInstanceRequest payload = CreateInstanceRequest.builder()
+                .instanceName(instanceName)
+                .token(token)
+                .number(number)
+                .qrcode(true)
+                .integration("WHATSAPP-BAILEYS")
+                .rejectCall(true)
+                .groupsIgnore(true)
+                .alwaysOnline(true)
+                .readMessages(true)
+                .webhook(webhook)
+                .build();
+
+        HttpEntity<CreateInstanceRequest> request = new HttpEntity<>(payload, headers);
+
+        ResponseEntity<InstanceResponse> response = restTemplate.exchange(
+                url, HttpMethod.POST, request, InstanceResponse.class
+        );
+
+        log.info("[CREATE INSTANCE] Instância {} criada com sucesso - Status: {}", instanceName, response.getStatusCode());
+        return response.getBody();
     }
 
     @Recover

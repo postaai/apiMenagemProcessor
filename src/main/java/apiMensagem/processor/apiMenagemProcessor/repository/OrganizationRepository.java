@@ -10,4 +10,5 @@ import java.util.Optional;
 public interface OrganizationRepository extends MongoRepository<OrganizationsEntity, String> {
 
     Optional<OrganizationsEntity> findByorgId(String orgId);
+    Optional<OrganizationsEntity> findByIdMeta(String idMeta);
 }

@@ -9,6 +9,8 @@ public class WhatsAppResponse {
     private String messaging_product;
     private List<Contact> contacts;
     private List<Message> messages;
+    private String id;
+    private String status;
 
     // Getters e Setters
     public String getMessaging_product() {
@@ -33,5 +35,21 @@ public class WhatsAppResponse {
 
     public void setMessages(List<Message> messages) {
         this.messages = messages;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

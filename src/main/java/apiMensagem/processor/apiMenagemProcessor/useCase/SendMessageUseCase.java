@@ -15,4 +15,6 @@ public interface SendMessageUseCase {
     void sendLocation(LocationRequest request);
 
     List<WhatsAppGroupResponse> getWhatsAppGroups(String orgId, boolean participants);
+
+    QrCodePayload generateQRCode(String orgId);
 }

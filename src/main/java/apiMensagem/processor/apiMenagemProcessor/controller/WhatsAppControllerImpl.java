@@ -8,6 +8,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,6 +24,8 @@ public class WhatsAppControllerImpl implements WhatsAppController {
     private final SendMessageUseCase sendMessageUseCase;
     private final ReceiveMessageUseCase receiveMessageUseCase;
     private final ObjectMapper objectMapper;
+
+    private static final String VERIFY_TOKEN = "meutoken123";
 
 
     @Override
@@ -41,6 +44,22 @@ public class WhatsAppControllerImpl implements WhatsAppController {
         }
 
         receiveMessageUseCase.receiveMessage(payload);
+        return ResponseEntity.ok().build();
+    }
+
+    @Override
+    public ResponseEntity<String> verifyMetaWebhook(String mode, String token, String challenge) {
+
+        if ("subscribe".equalsIgnoreCase(mode) && VERIFY_TOKEN.equals(token)) {
+            return ResponseEntity.ok(challenge == null ? "" : challenge);
+        }
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Invalid verify token");
+    }
+
+    @Override
+    public ResponseEntity<Void> receiveMessageMeta(MetaWhatsAppWebhookPayload payload) {
+        log.info("📥 Mensagem recebida via webhook Meta:\n{}", payload);
+        receiveMessageUseCase.receiveStatusMessageMeta(payload);
         return ResponseEntity.ok().build();
     }
 
@@ -67,5 +86,11 @@ public class WhatsAppControllerImpl implements WhatsAppController {
     public ResponseEntity<Void> sendLocation(LocationRequest request) {
         sendMessageUseCase.sendLocation(request);
         return ResponseEntity.ok().build();
+    }
+
+    @Override
+    public ResponseEntity<QrCodePayload> generateQRCode(String orgId) {
+        var qrCode = sendMessageUseCase.generateQRCode(orgId);
+        return ResponseEntity.ok(qrCode);
     }
 }

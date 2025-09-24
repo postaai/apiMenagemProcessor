@@ -11,6 +11,9 @@ public record OrganizationsEntity(
         @Id
         String id,
         String orgId,
+        String idMeta,
+        String numberIdMeta,
+        String numberId,
         String name,
         String apiKey,
         String instanceName,
@@ -22,6 +25,7 @@ public record OrganizationsEntity(
         String prompt,
         String modelName,
         String mcpServerPath,
+        PlatformEnum platform,
         Map<String, SummaryField> sumarySchema,
         String sumaryWebHookUrl
 ) {
