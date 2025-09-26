@@ -31,68 +31,77 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
 
     @Override
     public void receiveMessage(WebhookMessagePayload payload) {
-        try {
-            if (payload == null || payload.getData() == null) {
-                log.warn("Payload inválido ou nulo.");
-                return;
-            }
+        int maxAttempts = 2;
+        int attempt = 0;
+        while (attempt < maxAttempts) {
+            try {
+                if (payload == null || payload.getData() == null) {
+                    log.warn("Payload inválido ou nulo.");
+                    return;
+                }
 
-            String messageType = payload.getData().getMessageType();
-            String orgId = payload.getInstance();
-            String remoteJid = payload.getData().getKey() != null ? payload.getData().getKey().getRemoteJid() : null;
+                String messageType = payload.getData().getMessageType();
+                String orgId = payload.getInstance();
+                String remoteJid = payload.getData().getKey() != null ? payload.getData().getKey().getRemoteJid() : null;
 
-            if (remoteJid == null || orgId == null) {
-                log.warn("Dados incompletos no payload.");
-                return;
-            }
+                if (remoteJid == null || orgId == null) {
+                    log.warn("Dados incompletos no payload.");
+                    return;
+                }
 
-            remoteJid = remoteJid.replace("@s.whatsapp.net", "");
+                remoteJid = remoteJid.replace("@s.whatsapp.net", "");
 
-            var org = organizationRepository.findByorgId(orgId)
-                    .orElseThrow(FileSystemNotFoundException::new);
+                var org = organizationRepository.findByorgId(orgId)
+                        .orElseThrow(FileSystemNotFoundException::new);
 
-            String token = org.token();
-            String instanceName = org.instanceName();
+                String token = org.token();
+                String instanceName = org.instanceName();
 
-            switch (messageType) {
-                case "conversation":
-                    String conversation = payload.getData().getMessage().getConversation();
-                    String contactName = payload.getData().getPushName() != null ? payload.getData().getPushName() : "Desconhecido";
-                    apiProcessorGateway.sendTextMessage(remoteJid, orgId, conversation, contactName);
-                    log.info("Mensagem de texto enviada: [{}] - [{}]", remoteJid, conversation);
-                    break;
+                switch (messageType) {
+                    case "conversation":
+                        String conversation = payload.getData().getMessage().getConversation();
+                        String contactName = payload.getData().getPushName() != null ? payload.getData().getPushName() : "Desconhecido";
+                        apiProcessorGateway.sendTextMessage(remoteJid, orgId, conversation, contactName);
+                        log.info("Mensagem de texto enviada: [{}] - [{}]", remoteJid, conversation);
+                        break;
 
-                case "audioMessage":
-                    var audioMessage = payload.getData().getMessage().getAudioMessage();
-                    String audioUrl = audioMessage.getUrl();
-                    String contactNameAudio = payload.getData().getPushName() != null ? payload.getData().getPushName() : "Desconhecido";
-                    if (audioMessage.getSeconds() < limitAudio) {
-                        if (audioUrl != null) {
-                            apiProcessorGateway.sendAudioMessage(remoteJid, orgId, audioUrl, audioMessage.getMimetype(), audioMessage.getMediaKey(), contactNameAudio);
-                            log.info("Áudio enviado: [{}] - [{}]", remoteJid, audioUrl);
+                    case "audioMessage":
+                        var audioMessage = payload.getData().getMessage().getAudioMessage();
+                        String audioUrl = audioMessage.getUrl();
+                        String contactNameAudio = payload.getData().getPushName() != null ? payload.getData().getPushName() : "Desconhecido";
+                        if (audioMessage.getSeconds() < limitAudio) {
+                            if (audioUrl != null) {
+                                apiProcessorGateway.sendAudioMessage(remoteJid, orgId, audioUrl, audioMessage.getMimetype(), audioMessage.getMediaKey(), contactNameAudio);
+                                log.info("Áudio enviado: [{}] - [{}]", remoteJid, audioUrl);
+                            } else {
+                                log.warn("URL do áudio ausente.");
+                            }
                         } else {
-                            log.warn("URL do áudio ausente.");
+                            String mensagemPadrao = "Recebemos seu áudio! 😊 Para conseguirmos te ajudar melhor, envie áudios com até " + limitAudio + " segundos.";
+                            whatsAppGatewayEvolution.sendMessage(remoteJid, mensagemPadrao, token, instanceName);
                         }
-                    } else {
-                        String mensagemPadrao = "Recebemos seu áudio! 😊 Para conseguirmos te ajudar melhor, envie áudios com até " + limitAudio + " segundos.";
-                        whatsAppGatewayEvolution.sendMessage(remoteJid, mensagemPadrao, token, instanceName);
-                    }
-                    break;
+                        break;
 
-                case "imageMessage":
-                case "videoMessage":
-                    String mensagemDesculpa = "Desculpe, ainda não entendi esse tipo de mensagem. No momento só aceitamos mensagens de texto ou áudio.";
-                    whatsAppGatewayEvolution.sendMessage(remoteJid, mensagemDesculpa, token, instanceName);
-                    log.info("Mensagem de tipo não suportado respondida para [{}] - [{}]", remoteJid, mensagemDesculpa);
-                    break;
+                    case "imageMessage":
+                    case "videoMessage":
+                        String mensagemDesculpa = "Desculpe, ainda não entendi esse tipo de mensagem. No momento só aceitamos mensagens de texto ou áudio.";
+                        whatsAppGatewayEvolution.sendMessage(remoteJid, mensagemDesculpa, token, instanceName);
+                        log.info("Mensagem de tipo não suportado respondida para [{}] - [{}]", remoteJid, mensagemDesculpa);
+                        break;
 
-                default:
-                    log.info("Mensagem ignorada. Tipo não processado: {}", messageType);
-                    break;
+                    default:
+                        log.info("Mensagem ignorada. Tipo não processado: {}", messageType);
+                        break;
+                }
+                // Se chegou até aqui, não precisa tentar novamente
+                break;
+            } catch (Exception e) {
+                attempt++;
+                log.error("Erro ao processar mensagem recebida (tentativa {} de {}): {}", attempt, maxAttempts, e.getMessage(), e);
+                if (attempt >= maxAttempts) {
+                    log.error("Falha definitiva ao processar mensagem após {} tentativas.", maxAttempts);
+                }
             }
-
-        } catch (Exception e) {
-            log.error("Erro ao processar mensagem recebida: {}", e.getMessage(), e);
         }
     }
 
