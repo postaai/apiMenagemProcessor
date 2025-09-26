@@ -52,4 +52,8 @@ public interface WhatsAppController {
     @Operation(summary = "generateQRCode")
     @GetMapping("/generate-qrcode/{orgId}")
     ResponseEntity<QrCodePayload> generateQRCode(@Parameter(description = "ID da organização") @PathVariable String orgId);
+
+    @Operation(summary = "checkConnection" )
+    @GetMapping("/check-connection/{orgId}")
+    ResponseEntity<CheckInstanceResponse> checkConnection(@Parameter(description = "ID da organização") @PathVariable String orgId);
 }

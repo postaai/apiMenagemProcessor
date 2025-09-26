@@ -17,4 +17,6 @@ public interface SendMessageUseCase {
     List<WhatsAppGroupResponse> getWhatsAppGroups(String orgId, boolean participants);
 
     QrCodePayload generateQRCode(String orgId);
+
+    CheckInstanceResponse checkInstance(String orgId);
 }

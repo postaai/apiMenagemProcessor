@@ -93,4 +93,10 @@ public class WhatsAppControllerImpl implements WhatsAppController {
         var qrCode = sendMessageUseCase.generateQRCode(orgId);
         return ResponseEntity.ok(qrCode);
     }
+
+    @Override
+    public ResponseEntity<CheckInstanceResponse> checkConnection(String orgId) {
+        var response = sendMessageUseCase.checkInstance(orgId);
+        return ResponseEntity.ok(response);
+    }
 }

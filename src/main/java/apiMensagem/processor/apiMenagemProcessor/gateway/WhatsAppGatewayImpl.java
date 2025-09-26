@@ -225,6 +225,41 @@ public class WhatsAppGatewayImpl {
         return response.getBody();
     }
 
+    public CheckInstanceResponse checkInstance(String instanceName) {
+        final RestTemplate restTemplate = new RestTemplate();
+        String url = HOST_URL + "/instance/connectionState/" + instanceName;
+        log.info("[CHECK INSTANCE] Verificando estado da instância: {} via {}", instanceName, url);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("apikey", "vision-api-key");
+
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+
+        try {
+            ResponseEntity<CheckInstanceResponse> response = restTemplate.exchange(
+                    url, HttpMethod.GET, request, CheckInstanceResponse.class
+            );
+            log.info("[CHECK INSTANCE] Estado da instância {}: {}", instanceName, response.getBody());
+            return response.getBody();
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
+                log.warn("[CHECK INSTANCE][404] Instância não encontrada: {} - Detalhes: {}", instanceName, e.getResponseBodyAsString());
+                // Retorna objeto com instanceName e state = "desconected"
+                CheckInstanceResponse resp = new CheckInstanceResponse();
+                CheckInstanceResponse.InstanceInfo info = new CheckInstanceResponse.InstanceInfo();
+                info.setInstanceName(instanceName);
+                info.setState("disconnected");
+                resp.setInstance(info);
+                return resp;
+            }
+            log.error("[CHECK INSTANCE][ERRO] Falha ao verificar estado da instância {}: {}", instanceName, e.getMessage(), e);
+            return null;
+        } catch (Exception e) {
+            log.error("[CHECK INSTANCE][ERRO] Falha ao verificar estado da instância {}: {}", instanceName, e.getMessage(), e);
+            return null;
+        }
+    }
+
     @Recover
     public WhatsAppResponse recoverSendMessage(Exception e, String to, String message, String token, String instanceName) {
         log.error("[RECOVER] Tentativas esgotadas ao enviar mensagem para {}: {}", to, e.getMessage(), e);

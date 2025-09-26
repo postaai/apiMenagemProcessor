@@ -122,21 +122,38 @@ public class SendMessageUseCaseImpl implements SendMessageUseCase {
                     .orElseThrow(FileSystemNotFoundException::new);
 
             if (PlatformEnum.EVOLUTION.equals(organization.platform())) {
-                 whatsAppGatewayEvolution.deleteInstance(organization.instanceName());
+                whatsAppGatewayEvolution.deleteInstance(organization.instanceName());
                 Thread.sleep(1000);
-                 var qrCodeResponse = whatsAppGatewayEvolution.createInstance(organization.token(), organization.instanceName(), organization.numberId());
-                 return QrCodePayload.builder()
-                         .organizationId(organization.orgId())
-                         .pairingCode(qrCodeResponse.getQrcode().getPairingCode())
-                         .code(qrCodeResponse.getQrcode().getCode())
-                         .qrImage(qrCodeResponse.getQrcode().getBase64())
-                         .build();
+                var qrCodeResponse = whatsAppGatewayEvolution.createInstance(organization.token(), organization.instanceName(), organization.numberId());
+                return QrCodePayload.builder()
+                        .organizationId(organization.orgId())
+                        .pairingCode(qrCodeResponse.getQrcode().getPairingCode())
+                        .code(qrCodeResponse.getQrcode().getCode())
+                        .qrImage(qrCodeResponse.getQrcode().getBase64())
+                        .build();
             }
 
             throw new IllegalArgumentException("Meta não possui QR Code na Cloud API");
 
         } catch (Exception e) {
             log.info("Erro ao gerar QR Code: {}", e.getMessage());
+            throw new FileSystemNotFoundException();
+        }
+    }
+
+    @Override
+    public CheckInstanceResponse checkInstance(String orgId) {
+        try {
+            var organization = repository.findByorgId(orgId)
+                    .orElseThrow(FileSystemNotFoundException::new);
+
+            if (PlatformEnum.EVOLUTION.equals(organization.platform())) {
+                return whatsAppGatewayEvolution.checkInstance(organization.instanceName());
+            }
+            throw new IllegalArgumentException("Plataforma não encontrada " + organization.platform());
+
+        } catch (Exception e) {
+            log.info("Erro checar instancia: {}", e.getMessage());
             throw new FileSystemNotFoundException();
         }
     }
