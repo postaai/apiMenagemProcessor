@@ -228,7 +228,6 @@ public class WhatsAppGatewayImpl {
     public CheckInstanceResponse checkInstance(String instanceName) {
         final RestTemplate restTemplate = new RestTemplate();
         String url = HOST_URL + "/instance/connectionState/" + instanceName;
-        log.info("[CHECK INSTANCE] Verificando estado da instância: {} via {}", instanceName, url);
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("apikey", "vision-api-key");
@@ -239,7 +238,6 @@ public class WhatsAppGatewayImpl {
             ResponseEntity<CheckInstanceResponse> response = restTemplate.exchange(
                     url, HttpMethod.GET, request, CheckInstanceResponse.class
             );
-            log.info("[CHECK INSTANCE] Estado da instância {}: {}", instanceName, response.getBody());
             return response.getBody();
         } catch (HttpClientErrorException e) {
             if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
