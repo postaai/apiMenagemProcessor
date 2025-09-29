@@ -59,7 +59,7 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
                     String conversation = payload.getData().getMessage().getConversation();
                     String contactName = payload.getData().getPushName() != null ? payload.getData().getPushName() : "Desconhecido";
                     apiProcessorGateway.sendTextMessage(remoteJid, orgId, conversation, contactName);
-                    log.info("Mensagem de texto enviada: [{}] - [{}]", remoteJid, conversation);
+                    log.info("Mensagem de texto enviada: [{}] - [{}] - [{}]", remoteJid, conversation, contactName);
                     break;
 
                 case "audioMessage":
