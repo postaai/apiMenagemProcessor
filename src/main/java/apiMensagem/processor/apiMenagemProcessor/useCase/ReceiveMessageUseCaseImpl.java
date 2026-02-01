@@ -141,8 +141,7 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
 
             log.info("[META][WEBHOOK][RESOLVE_ORG][IN] idMeta={}", idMeta);
             var oroganization = resolveOrganizationByPhoneNumberId(idMeta);
-            log.info("[META][WEBHOOK][RESOLVE_ORG][OUT] idMeta={} orgId={}",
-                    idMeta, (oroganization != null ? oroganization.orgId() : null));
+            log.info("[META][WEBHOOK][RESOLVE_ORG][OUT] idMeta={} orgId={}", oroganization.idMeta(), oroganization.orgId());
 
             if (change.value.contacts == null || change.value.contacts.isEmpty()) {
                 log.info("[META][WEBHOOK][INFO] Contacts não encontrado no payload: entryId={}", idMeta);
@@ -217,11 +216,12 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
 
                         String mensagemPadrao = "Recebemos seu áudio! 😊 Para conseguirmos te ajudar melhor, envie áudios com até " + limitAudio + " segundos.";
 
-                        apiProcessorGateway.sendTextMessage(
+                        whatsAppGatewayMeta.sendMessage(
                                 numeroId,
-                                oroganization.orgId(),
                                 mensagemPadrao,
-                                nomeContato
+                                oroganization.tokenMeta(),
+                                oroganization.numberIdMeta(),
+                                oroganization.numberIdMeta()
                         );
                         break;
                     }
