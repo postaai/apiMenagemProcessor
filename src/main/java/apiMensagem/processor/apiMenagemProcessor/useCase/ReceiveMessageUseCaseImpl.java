@@ -1,5 +1,6 @@
 package apiMensagem.processor.apiMenagemProcessor.useCase;
 
+import apiMensagem.processor.apiMenagemProcessor.config.AudioDurationUtil;
 import apiMensagem.processor.apiMenagemProcessor.dto.WhatsAppWebhookPayload;
 import apiMensagem.processor.apiMenagemProcessor.dto.messagePayload.WebhookMessagePayload;
 import apiMensagem.processor.apiMenagemProcessor.entity.OrganizationsEntity;
@@ -203,6 +204,24 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
                     }
 
                     byte[] audioBytes = whatsAppMediaGateway.downloadMediaBinary(oroganization, mediaMeta.url());
+
+                    int durationSeconds = AudioDurationUtil.estimateDurationSeconds(audioBytes);
+
+                    if (durationSeconds > limitAudio) {
+
+                        log.info("[META][AUDIO][LIMIT] duração={}s limite={}s waId={}",
+                                durationSeconds, limitAudio, numeroId);
+
+                        String mensagemPadrao = "Recebemos seu áudio! 😊 Para conseguirmos te ajudar melhor, envie áudios com até " + limitAudio + " segundos.";
+
+                        apiProcessorGateway.sendTextMessage(
+                                numeroId,
+                                oroganization.orgId(),
+                                mensagemPadrao,
+                                nomeContato
+                        );
+                        break;
+                    }
 
                     if (audioBytes == null || audioBytes.length == 0) {
                         log.error("[META][AUDIO][ERRO] áudio vazio: mediaId={}", mediaId);
