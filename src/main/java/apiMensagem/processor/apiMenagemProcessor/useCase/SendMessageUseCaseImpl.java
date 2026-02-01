@@ -70,7 +70,7 @@ public class SendMessageUseCaseImpl implements SendMessageUseCase {
                 case EVOLUTION ->
                         whatsAppGatewayEvolution.sendAudio(request.number(), request.audio(), organization.token(), organization.instanceName());
                 case META ->
-                        whatsAppGatewayMeta.sendAudio(request.number(), request.audio(), organization.token(), organization.instanceName(), organization.numberIdMeta());
+                        whatsAppGatewayMeta.sendAudio(request.number(), request.audio(), organization.tokenMeta(), organization.numberIdMeta(), organization.numberIdMeta());
                 default -> throw new IllegalArgumentException("Plataforma não encontrada " + organization.platform());
             }
         } catch (Exception e) {

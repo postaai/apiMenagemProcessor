@@ -4,7 +4,9 @@ import apiMensagem.processor.apiMenagemProcessor.dto.WhatsAppGroupResponse;
 import apiMensagem.processor.apiMenagemProcessor.dto.WhatsAppResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
+import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
 import org.springframework.retry.annotation.Retryable;
@@ -12,8 +14,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.net.SocketTimeoutException;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
@@ -79,7 +83,85 @@ public class WhatsAppGatewayMetaImpl {
     )
     public void sendAudio(String to, String base64Audio, String token, String phoneNumberId, String numberIdMeta) {
 
+        // 1) Decodifica base64 (aceita também "data:audio/ogg;base64,....")
+        String mimeType = "audio/ogg"; // default seguro para voice note (ogg/opus)
+        String b64 = base64Audio;
+
+        if (base64Audio != null && base64Audio.startsWith("data:")) {
+            // data:<mime>;base64,<data>
+            int comma = base64Audio.indexOf(',');
+            if (comma > 0) {
+                String header = base64Audio.substring(5, comma); // remove "data:"
+                int semi = header.indexOf(';');
+                if (semi > 0) mimeType = header.substring(0, semi);
+                b64 = base64Audio.substring(comma + 1);
+            }
+        }
+
+        byte[] audioBytes = Base64.getDecoder().decode(b64);
+
+        WebClient graph = WebClient.builder()
+                .baseUrl("https://graph.facebook.com")
+                .build();
+
+        // 2) Upload da mídia -> retorna mediaId
+        // POST /vXX.X/{phone-number-id}/media  (multipart/form-data)
+        // Campos: messaging_product=whatsapp, file, type=<mime>
+        // Doc: Media upload (Cloud API). :contentReference[oaicite:0]{index=0}
+        MultipartBodyBuilder mb = new MultipartBodyBuilder();
+        mb.part("messaging_product", "whatsapp");
+        mb.part("type", mimeType);
+
+        mb.part("file", new ByteArrayResource(audioBytes) {
+                    @Override public String getFilename() { return "audio"; }
+                })
+                .header(HttpHeaders.CONTENT_TYPE, mimeType);
+
+        log.info("token meta {}", token);
+
+        String mediaId = graph.post()
+                .uri("/v22.0/{phoneNumberId}/media", numberIdMeta)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .bodyValue(mb.build())
+                .retrieve()
+                .onStatus(s -> !s.is2xxSuccessful(), resp ->
+                        resp.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(new RuntimeException("Meta media upload erro: " + body)))
+                )
+                .bodyToMono(MediaUploadResponse.class)
+                .map(MediaUploadResponse::id)
+                .block();
+
+        if (mediaId == null || mediaId.isBlank()) {
+            throw new IllegalStateException("Meta não retornou mediaId no upload do áudio");
+        }
+
+        // 3) Envia a mensagem de áudio referenciando o mediaId
+        // POST /vXX.X/{phone-number-id}/messages com type="audio" e audio.id=<mediaId>
+        // Doc: Audio messages / Message API. :contentReference[oaicite:1]{index=1}
+        Map<String, Object> payload = Map.of(
+                "messaging_product", "whatsapp",
+                "to", to,
+                "type", "audio",
+                "audio", Map.of("id", mediaId)
+        );
+
+        graph.post()
+                .uri("/v22.0/{phoneNumberId}/messages", phoneNumberId)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(payload)
+                .retrieve()
+                .onStatus(s -> !s.is2xxSuccessful(), resp ->
+                        resp.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(new RuntimeException("Meta send audio erro: " + body)))
+                )
+                .bodyToMono(String.class)
+                .block();
     }
+
+    private record MediaUploadResponse(String id) {}
 
     /**
      * Envio de localização:
