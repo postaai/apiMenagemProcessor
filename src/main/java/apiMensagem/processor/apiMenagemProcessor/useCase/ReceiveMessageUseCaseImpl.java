@@ -6,6 +6,7 @@ import apiMensagem.processor.apiMenagemProcessor.entity.OrganizationsEntity;
 import apiMensagem.processor.apiMenagemProcessor.gateway.ApiProcessorGateway;
 import apiMensagem.processor.apiMenagemProcessor.gateway.WhatsAppGatewayImpl;
 import apiMensagem.processor.apiMenagemProcessor.gateway.WhatsAppGatewayMetaImpl;
+import apiMensagem.processor.apiMenagemProcessor.gateway.WhatsAppMediaGateway;
 import apiMensagem.processor.apiMenagemProcessor.repository.OrganizationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,7 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
     private final ApiProcessorGateway apiProcessorGateway;
     private final WhatsAppGatewayImpl whatsAppGatewayEvolution;
     private final WhatsAppGatewayMetaImpl whatsAppGatewayMeta;
+    private final WhatsAppMediaGateway whatsAppMediaGateway;
 
     @Value("${processor.limitAudio}")
     private Integer limitAudio;
@@ -97,70 +99,161 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
 
     @Override
     public void receiveStatusMessageMeta(WhatsAppWebhookPayload payload) {
-        if (payload == null || payload.entry == null || payload.entry.isEmpty()) {
-            throw new IllegalArgumentException("Payload do webhook está vazio ou nulo");
+        try {
+            log.info("[META][WEBHOOK][IN] payloadRecebido={}", payload);
+
+            if (payload == null || payload.entry == null || payload.entry.isEmpty()) {
+                log.error("[META][WEBHOOK][ERRO] payload nulo/vazio: payload={}, entry={}",
+                        payload, (payload != null ? payload.entry : null));
+                throw new IllegalArgumentException("Payload do webhook está vazio ou nulo");
+            }
+
+            var entry = payload.entry.getFirst();
+            log.info("[META][WEBHOOK][ENTRY] entryId={} changesCount={}",
+                    entry != null ? entry.id : null,
+                    (entry != null && entry.changes != null) ? entry.changes.size() : 0);
+
+            String idMeta = entry.id;
+            if (idMeta == null || idMeta.isBlank()) {
+                log.error("[META][WEBHOOK][ERRO] ID Meta não encontrado no entry: entry={}", entry);
+                throw new IllegalArgumentException("ID Meta não encontrado no payload");
+            }
+
+            log.info("[META][WEBHOOK][RESOLVE_ORG][IN] idMeta={}", idMeta);
+            var oroganization = resolveOrganizationByPhoneNumberId(idMeta);
+            log.info("[META][WEBHOOK][RESOLVE_ORG][OUT] idMeta={} orgId={}",
+                    idMeta, (oroganization != null ? oroganization.orgId() : null));
+
+            if (entry.changes == null || entry.changes.isEmpty()) {
+                log.error("[META][WEBHOOK][ERRO] Changes não encontrado no payload: entryId={} entry={}", idMeta, entry);
+                throw new IllegalArgumentException("Changes não encontrado no payload");
+            }
+
+            var change = entry.changes.getFirst();
+            log.info("[META][WEBHOOK][CHANGE] field={} hasValue={} hasContacts={} hasMessages={}",
+                    change != null ? change.field : null,
+                    change != null && change.value != null,
+                    change != null && change.value != null && change.value.contacts != null ? change.value.contacts.size() : 0,
+                    change != null && change.value != null && change.value.messages != null ? change.value.messages.size() : 0
+            );
+
+            if (change.value == null) {
+                log.error("[META][WEBHOOK][ERRO] change.value é nulo: entryId={} change={}", idMeta, change);
+                throw new IllegalArgumentException("Value não encontrado no payload");
+            }
+
+            if (change.value.contacts == null || change.value.contacts.isEmpty()) {
+                log.info("[META][WEBHOOK][INFO] Contacts não encontrado no payload: entryId={} changeValue={}", idMeta, change.value);
+            }
+
+            String numeroId = null;
+            String nomeContato = null;
+
+            if (change.value.contacts != null && !change.value.contacts.isEmpty()) {
+                var c0 = change.value.contacts.getFirst();
+                numeroId = c0.waId;
+                nomeContato = (c0.profile != null ? c0.profile.name : null);
+
+                log.info("[META][WEBHOOK][CONTACT] waId={} nome={}", numeroId, nomeContato);
+            }
+            if (change.value.messages == null || change.value.messages.isEmpty()) {
+                throw new IllegalArgumentException("Messages não encontrado no payload");
+            }
+
+            var m0 = change.value.messages.getFirst();
+            String tipo = m0.type;
+            log.info("[META][WEBHOOK][MESSAGE] messageId={} from={} type={} timestamp={}",
+                    m0.id, m0.from, tipo, m0.timestamp);
+
+            switch (tipo) {
+
+                case "text": {
+                    String textoRecebido = (m0.text != null ? m0.text.body : null);
+
+                    log.info("[META][WEBHOOK][TEXT][IN] waId={} orgId={} nome={} textoRecebido={}",
+                            numeroId,
+                            (oroganization != null ? oroganization.orgId() : null),
+                            nomeContato,
+                            textoRecebido);
+
+                    apiProcessorGateway.sendTextMessage(
+                            numeroId,                 // numero que enviou a mensagem
+                            oroganization.orgId(),
+                            textoRecebido,            // texto recebido no webhook
+                            nomeContato               // nome de quem enviou a mensagem
+                    );
+
+                    log.info("[META][WEBHOOK][TEXT][OUT] sendTextMessage enviado: waId={} orgId={}",
+                            numeroId,
+                            (oroganization != null ? oroganization.orgId() : null));
+
+                    break;
+                }
+                case "audio": {
+                    String messageId = m0.id;
+                    String from = m0.from;
+
+                    String mediaId = (m0.audio != null ? m0.audio.id : null);
+
+                    log.info("[META][AUDIO][IN] waId={} messageId={} mediaId={}",
+                            numeroId, messageId, mediaId);
+
+                    if (mediaId == null || mediaId.isBlank()) {
+                        log.error("[META][AUDIO][ERRO] mediaId não encontrado: messageId={}", messageId);
+                        break;
+                    }
+
+                    assert oroganization != null;
+                    var mediaMeta = whatsAppMediaGateway.getMediaMeta(
+                            oroganization
+                    );
+
+                    if (mediaMeta == null || mediaMeta.url() == null || mediaMeta.url().isBlank()) {
+                        log.error("[META][AUDIO][ERRO] metadata inválida: mediaId={}", mediaId);
+                        break;
+                    }
+
+                    byte[] audioBytes = whatsAppMediaGateway.downloadMediaBinary(
+                            oroganization,
+                            mediaMeta.url()
+                    );
+
+                    if (audioBytes == null || audioBytes.length == 0) {
+                        log.error("[META][AUDIO][ERRO] áudio vazio: mediaId={}", mediaId);
+                        break;
+                    }
+
+                    apiProcessorGateway.sendAudioMessage(numeroId, oroganization.orgId(), mediaMeta.url(), mediaMeta.mimeType(), "mediaKeyPlaceholder", nomeContato);
+
+                    log.info("[META][AUDIO][OK] waId={} messageId={}", numeroId, messageId);
+                    break;
+                }
+
+                case "image":
+                    log.info("[META][WEBHOOK][IMAGE] messageId={} from={}", m0.id, m0.from);
+                    break;
+
+                case "video":
+                    log.info("[META][WEBHOOK][VIDEO] messageId={} from={}", m0.id, m0.from);
+                    break;
+
+                case "document":
+                    log.info("[META][WEBHOOK][DOCUMENT] messageId={} from={}", m0.id, m0.from);
+                    break;
+
+                case "location":
+                    log.info("[META][WEBHOOK][LOCATION] messageId={} from={}", m0.id, m0.from);
+                    break;
+
+                default:
+                    log.info("[META][WEBHOOK][UNHANDLED] type={} messageId={} from={}", tipo, m0.id, m0.from);
+                    break;
+            }
+
+        } catch (Exception e) {
+            log.error("[META][WEBHOOK][EXCEPTION] erro ao processar webhook: payload={}", payload, e);
+            throw e;
         }
-
-        var entry = payload.entry.getFirst();
-
-        String idMeta = entry.id;
-        if (idMeta == null || idMeta.isBlank()) {
-            throw new IllegalArgumentException("ID Meta não encontrado no payload");
-        }
-
-        var oroganization = resolveOrganizationByPhoneNumberId(idMeta);
-
-        if (entry.changes == null || entry.changes.isEmpty()) {
-            throw new IllegalArgumentException("Changes não encontrado no payload");
-        }
-
-        var change = entry.changes.getFirst();
-
-        if (change.value == null || change.value.contacts == null || change.value.contacts.isEmpty()) {
-            throw new IllegalArgumentException("Contacts não encontrado no payload");
-        }
-
-        String numeroId = change.value.contacts.getFirst().waId;
-
-        if (change.value.messages == null || change.value.messages.isEmpty()) {
-            throw new IllegalArgumentException("Messages não encontrado no payload");
-        }
-
-        String tipo = change.value.messages.getFirst().type;
-
-        switch (tipo) {
-
-            case "text":
-                String textoRecebido = change.value.messages.get(0).text.body;
-                String nomeContato = change.value.contacts.get(0).profile.name;
-
-                apiProcessorGateway.sendTextMessage(
-                        numeroId,          // numero que enviou a mensagem
-                        oroganization.orgId(),
-                        textoRecebido,     // texto recebido no webhook
-                        nomeContato        // nome de quem enviou a mensagem
-                );
-
-            case "audio":
-                break;
-
-            case "image":
-                break;
-
-            case "video":
-                break;
-
-            case "document":
-                break;
-
-            case "location":
-                break;
-
-            default:
-                break;
-        }
-
-
     }
 
 
