@@ -57,7 +57,7 @@ public class WhatsAppControllerImpl implements WhatsAppController {
     }
 
     @Override
-    public ResponseEntity<Void> receiveMessageMeta(MetaWhatsAppWebhookPayload payload) {
+    public ResponseEntity<Void> receiveMessageMeta(WhatsAppWebhookPayload payload) {
         log.info("📥 Mensagem recebida via webhook Meta:\n{}", payload);
         receiveMessageUseCase.receiveStatusMessageMeta(payload);
         return ResponseEntity.ok().build();

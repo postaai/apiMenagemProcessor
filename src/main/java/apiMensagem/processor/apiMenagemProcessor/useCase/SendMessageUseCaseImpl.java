@@ -32,7 +32,7 @@ public class SendMessageUseCaseImpl implements SendMessageUseCase {
                 case EVOLUTION ->
                         whatsAppGatewayEvolution.sendMessage(request.userId(), request.text(), organization.token(), organization.instanceName());
                 case META ->
-                        whatsAppGatewayMeta.sendMessage(request.userId(), request.text(), organization.token(), organization.instanceName(), organization.numberIdMeta());
+                        whatsAppGatewayMeta.sendMessage(request.userId(), request.text(), organization.tokenMeta(), organization.instanceName(), organization.numberIdMeta());
                 default -> throw new IllegalArgumentException("Plataforma não encontrada " + organization.platform());
             }
         } catch (Exception e) {

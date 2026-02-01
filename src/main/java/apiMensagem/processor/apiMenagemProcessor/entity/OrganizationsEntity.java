@@ -17,6 +17,7 @@ public record OrganizationsEntity(
         String name,
         String apiKey,
         String instanceName,
+        String tokenMeta,
         String token,
         Instant createdAt,
         Instant updatedAt,

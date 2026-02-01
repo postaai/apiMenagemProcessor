@@ -2,9 +2,10 @@ package apiMensagem.processor.apiMenagemProcessor.dto;
 
 import apiMensagem.processor.apiMenagemProcessor.dto.messagePayload.Contact;
 import apiMensagem.processor.apiMenagemProcessor.dto.messagePayload.Message;
+import lombok.Builder;
 
 import java.util.List;
-
+@Builder
 public class WhatsAppResponse {
     private String messaging_product;
     private List<Contact> contacts;

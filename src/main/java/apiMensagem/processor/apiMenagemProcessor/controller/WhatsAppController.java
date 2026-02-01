@@ -25,7 +25,7 @@ public interface WhatsAppController {
 
     @Operation(summary = "Webhook de recebimento de mensagens meta")
     @PostMapping("/webhook/receive-message/meta")
-    ResponseEntity<Void> receiveMessageMeta(@RequestBody MetaWhatsAppWebhookPayload payload);
+    ResponseEntity<Void> receiveMessageMeta(@RequestBody WhatsAppWebhookPayload payload);
 
     @GetMapping(value = "/webhook/receive-message/meta", produces = MediaType.TEXT_PLAIN_VALUE)
      ResponseEntity<String> verifyMetaWebhook(
