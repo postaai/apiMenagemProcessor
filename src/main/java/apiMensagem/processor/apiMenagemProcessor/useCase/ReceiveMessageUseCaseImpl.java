@@ -113,6 +113,25 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
                     entry != null ? entry.id : null,
                     (entry != null && entry.changes != null) ? entry.changes.size() : 0);
 
+            if (entry == null || entry.changes == null || entry.changes.isEmpty()) {
+                log.info("[META][WEBHOOK][IGNORE] sem changes");
+                return;
+            }
+
+            var change = entry.changes.getFirst();
+            log.info("[META][WEBHOOK][CHANGE] field={} hasValue={} hasContacts={} hasMessages={}",
+                    change != null ? change.field : null,
+                    change != null && change.value != null,
+                    change != null && change.value != null && change.value.contacts != null ? change.value.contacts.size() : 0,
+                    change != null && change.value != null && change.value.messages != null ? change.value.messages.size() : 0
+            );
+
+            // ✅ CORREÇÃO: ignorar chamadas que não trazem messages (status/keep-alive/updates sem inbound)
+            if (change == null || change.value == null || change.value.messages == null || change.value.messages.isEmpty()) {
+                log.info("[META][WEBHOOK][IGNORE] webhook sem messages (Meta status/keep-alive)");
+                return;
+            }
+
             String idMeta = entry.id;
             if (idMeta == null || idMeta.isBlank()) {
                 log.error("[META][WEBHOOK][ERRO] ID Meta não encontrado no entry: entry={}", entry);
@@ -124,26 +143,8 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
             log.info("[META][WEBHOOK][RESOLVE_ORG][OUT] idMeta={} orgId={}",
                     idMeta, (oroganization != null ? oroganization.orgId() : null));
 
-            if (entry.changes == null || entry.changes.isEmpty()) {
-                log.error("[META][WEBHOOK][ERRO] Changes não encontrado no payload: entryId={} entry={}", idMeta, entry);
-                throw new IllegalArgumentException("Changes não encontrado no payload");
-            }
-
-            var change = entry.changes.getFirst();
-            log.info("[META][WEBHOOK][CHANGE] field={} hasValue={} hasContacts={} hasMessages={}",
-                    change != null ? change.field : null,
-                    change != null && change.value != null,
-                    change != null && change.value != null && change.value.contacts != null ? change.value.contacts.size() : 0,
-                    change != null && change.value != null && change.value.messages != null ? change.value.messages.size() : 0
-            );
-
-            if (change.value == null) {
-                log.error("[META][WEBHOOK][ERRO] change.value é nulo: entryId={} change={}", idMeta, change);
-                throw new IllegalArgumentException("Value não encontrado no payload");
-            }
-
             if (change.value.contacts == null || change.value.contacts.isEmpty()) {
-                log.info("[META][WEBHOOK][INFO] Contacts não encontrado no payload: entryId={} changeValue={}", idMeta, change.value);
+                log.info("[META][WEBHOOK][INFO] Contacts não encontrado no payload: entryId={}", idMeta);
             }
 
             String numeroId = null;
@@ -153,11 +154,7 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
                 var c0 = change.value.contacts.getFirst();
                 numeroId = c0.waId;
                 nomeContato = (c0.profile != null ? c0.profile.name : null);
-
                 log.info("[META][WEBHOOK][CONTACT] waId={} nome={}", numeroId, nomeContato);
-            }
-            if (change.value.messages == null || change.value.messages.isEmpty()) {
-                throw new IllegalArgumentException("Messages não encontrado no payload");
             }
 
             var m0 = change.value.messages.getFirst();
@@ -170,33 +167,27 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
                 case "text": {
                     String textoRecebido = (m0.text != null ? m0.text.body : null);
 
-                    log.info("[META][WEBHOOK][TEXT][IN] waId={} orgId={} nome={} textoRecebido={}",
+                    log.info("[META][WEBHOOK][TEXT][IN] waId={} orgId={} nome={}",
                             numeroId,
                             (oroganization != null ? oroganization.orgId() : null),
-                            nomeContato,
-                            textoRecebido);
+                            nomeContato);
 
                     apiProcessorGateway.sendTextMessage(
-                            numeroId,                 // numero que enviou a mensagem
+                            numeroId,
                             oroganization.orgId(),
-                            textoRecebido,            // texto recebido no webhook
-                            nomeContato               // nome de quem enviou a mensagem
+                            textoRecebido,
+                            nomeContato
                     );
 
-                    log.info("[META][WEBHOOK][TEXT][OUT] sendTextMessage enviado: waId={} orgId={}",
-                            numeroId,
-                            (oroganization != null ? oroganization.orgId() : null));
-
+                    log.info("[META][WEBHOOK][TEXT][OK] waId={} messageId={}", numeroId, m0.id);
                     break;
                 }
+
                 case "audio": {
                     String messageId = m0.id;
-                    String from = m0.from;
-
                     String mediaId = (m0.audio != null ? m0.audio.id : null);
 
-                    log.info("[META][AUDIO][IN] waId={} messageId={} mediaId={}",
-                            numeroId, messageId, mediaId);
+                    log.info("[META][AUDIO][IN] waId={} messageId={} mediaId={}", numeroId, messageId, mediaId);
 
                     if (mediaId == null || mediaId.isBlank()) {
                         log.error("[META][AUDIO][ERRO] mediaId não encontrado: messageId={}", messageId);
@@ -204,26 +195,28 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
                     }
 
                     assert oroganization != null;
-                    var mediaMeta = whatsAppMediaGateway.getMediaMeta(
-                            oroganization
-                    );
+                    var mediaMeta = whatsAppMediaGateway.getMediaMeta(oroganization);
 
                     if (mediaMeta == null || mediaMeta.url() == null || mediaMeta.url().isBlank()) {
                         log.error("[META][AUDIO][ERRO] metadata inválida: mediaId={}", mediaId);
                         break;
                     }
 
-                    byte[] audioBytes = whatsAppMediaGateway.downloadMediaBinary(
-                            oroganization,
-                            mediaMeta.url()
-                    );
+                    byte[] audioBytes = whatsAppMediaGateway.downloadMediaBinary(oroganization, mediaMeta.url());
 
                     if (audioBytes == null || audioBytes.length == 0) {
                         log.error("[META][AUDIO][ERRO] áudio vazio: mediaId={}", mediaId);
                         break;
                     }
 
-                    apiProcessorGateway.sendAudioMessage(numeroId, oroganization.orgId(), mediaMeta.url(), mediaMeta.mimeType(), "mediaKeyPlaceholder", nomeContato);
+                    apiProcessorGateway.sendAudioMessage(
+                            numeroId,
+                            oroganization.orgId(),
+                            mediaMeta.url(),
+                            mediaMeta.mimeType(),
+                            "mediaKeyPlaceholder",
+                            nomeContato
+                    );
 
                     log.info("[META][AUDIO][OK] waId={} messageId={}", numeroId, messageId);
                     break;
@@ -255,6 +248,7 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
             throw e;
         }
     }
+
 
 
     private OrganizationsEntity resolveOrganizationByPhoneNumberId(String idMeta) {
