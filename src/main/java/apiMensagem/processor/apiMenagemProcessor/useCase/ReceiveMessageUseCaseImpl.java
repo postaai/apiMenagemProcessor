@@ -207,6 +207,9 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
 
                     int durationSeconds = AudioDurationUtil.estimateDurationSeconds(audioBytes);
 
+                    log.info("[META][AUDIO][DURATION] waId={} messageId={} duration={}s",
+                            numeroId, messageId, durationSeconds);
+
                     if (durationSeconds > limitAudio) {
 
                         log.info("[META][AUDIO][LIMIT] duração={}s limite={}s waId={}",
