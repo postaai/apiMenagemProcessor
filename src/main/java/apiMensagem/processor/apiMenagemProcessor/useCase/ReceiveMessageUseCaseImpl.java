@@ -195,7 +195,7 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
                     }
 
                     assert oroganization != null;
-                    var mediaMeta = whatsAppMediaGateway.getMediaMeta(oroganization);
+                    var mediaMeta = whatsAppMediaGateway.getMediaMeta(oroganization, mediaId);
 
                     if (mediaMeta == null || mediaMeta.url() == null || mediaMeta.url().isBlank()) {
                         log.error("[META][AUDIO][ERRO] metadata inválida: mediaId={}", mediaId);
