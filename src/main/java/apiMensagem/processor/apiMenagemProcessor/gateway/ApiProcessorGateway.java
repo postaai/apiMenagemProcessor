@@ -43,7 +43,7 @@ public class ApiProcessorGateway {
         }
     }
 
-    public void sendAudioMessage(String userId, String orgId, String urlAudio, String mimetype, String mediaKey, String contactName){
+    public void sendAudioMessage(String userId, String orgId, String base64Audio, String mimetype, String mediaKey, String contactName){
         RestTemplate restTemplate = new RestTemplate();
 
         // Criar headers
@@ -52,14 +52,14 @@ public class ApiProcessorGateway {
 
         // Criar body
         Map<String, Object> body = new HashMap<>();
-        body.put("base64", urlAudio);
+        body.put("base64", base64Audio);
         body.put("mediaKey", mediaKey);
         body.put("mimetype", mimetype);
         body.put("orgId", orgId);
         body.put("userId", userId);
         body.put("contactName", contactName);
 
-        // Criar request
+        // Criar requestS
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
 
         try {
