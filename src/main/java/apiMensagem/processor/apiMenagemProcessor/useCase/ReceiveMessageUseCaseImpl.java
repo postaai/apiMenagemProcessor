@@ -202,7 +202,17 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
                         break;
                     }
 
-                    byte[] audioBytes = whatsAppMediaGateway.downloadMediaBinary(oroganization, mediaMeta.url());
+                    String base64Audio = whatsAppMediaGateway.downloadMediaBase64(
+                            oroganization,
+                            mediaMeta.url()
+                    );
+
+                    if (base64Audio == null || base64Audio.isBlank()) {
+                        log.error("[META][AUDIO][ERRO] base64 do áudio vazio: mediaId={}", mediaId);
+                        break;
+                    }
+
+                    byte[] audioBytes = java.util.Base64.getDecoder().decode(base64Audio);
 
                     int durationSeconds = AudioDurationUtil.estimateDurationSeconds(audioBytes);
 
@@ -234,7 +244,7 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
                     apiProcessorGateway.sendAudioMessage(
                             numeroId,
                             oroganization.orgId(),
-                            mediaMeta.url(),
+                            base64Audio,
                             mediaMeta.mimeType(),
                             "mediaKeyPlaceholder",
                             nomeContato

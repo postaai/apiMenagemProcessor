@@ -13,6 +13,7 @@ public record OrganizationsEntity(
         String orgId,
         String idMeta,
         String numberIdMeta,
+        String tokenAgenda,
         String numberId,
         String name,
         String apiKey,

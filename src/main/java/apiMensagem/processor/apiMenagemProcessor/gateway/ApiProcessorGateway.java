@@ -52,7 +52,7 @@ public class ApiProcessorGateway {
 
         // Criar body
         Map<String, Object> body = new HashMap<>();
-        body.put("url", urlAudio);
+        body.put("base64", urlAudio);
         body.put("mediaKey", mediaKey);
         body.put("mimetype", mimetype);
         body.put("orgId", orgId);
