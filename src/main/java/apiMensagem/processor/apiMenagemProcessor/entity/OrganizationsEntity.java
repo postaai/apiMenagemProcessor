@@ -27,7 +27,7 @@ public record OrganizationsEntity(
         String socketId,
         String prompt,
         String modelName,
-        String mcpServerPath,
+        List<McpServer> mcpServers,
         PlatformEnum platform,
         // ... added scheduling fields ...
         List<BusinessHour> businessHours,
@@ -37,7 +37,13 @@ public record OrganizationsEntity(
         Integer minAdvanceBookingHours,
         Integer maxAdvanceBookingDays,
         Boolean enableGoogleMeet,
-        // ...existing code...
+        Boolean disableMultipleMessages,
+        Boolean answerInAudio,
+        Integer limiteUsuario,
+        Boolean shouldSendSummary,
+        List<SendSummaryContact> sendSummaryContacts,
+        Boolean shouldTerminateChatOnSummary,
+        String _class,
         Map<String, SummaryField> sumarySchema,
         String sumaryWebHookUrl
 ) {
@@ -56,4 +62,17 @@ public record OrganizationsEntity(
             Integer endMinute
     ) {
     }
+
+    public record McpServer(
+            String name,
+            String type,
+            String url,
+            String command,
+            List<String> args
+    ) {}
+
+    public record SendSummaryContact(
+            String name,
+            String userId
+    ) {}
 }
