@@ -11,4 +11,5 @@ public interface OrganizationRepository extends MongoRepository<OrganizationsEnt
 
     Optional<OrganizationsEntity> findByorgId(String orgId);
     Optional<OrganizationsEntity> findByIdMeta(String idMeta);
+    Optional<OrganizationsEntity> findByTokenWebhookMeta(String tokenWebhookMeta);
 }

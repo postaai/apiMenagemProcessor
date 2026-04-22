@@ -2,6 +2,7 @@ package apiMensagem.processor.apiMenagemProcessor.controller;
 
 import apiMensagem.processor.apiMenagemProcessor.dto.*;
 import apiMensagem.processor.apiMenagemProcessor.dto.messagePayload.WebhookMessagePayload;
+import apiMensagem.processor.apiMenagemProcessor.repository.OrganizationRepository;
 import apiMensagem.processor.apiMenagemProcessor.useCase.ReceiveMessageUseCase;
 import apiMensagem.processor.apiMenagemProcessor.useCase.SendMessageUseCase;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -23,9 +24,8 @@ public class WhatsAppControllerImpl implements WhatsAppController {
 
     private final SendMessageUseCase sendMessageUseCase;
     private final ReceiveMessageUseCase receiveMessageUseCase;
+    private final OrganizationRepository organizationRepository;
     private final ObjectMapper objectMapper;
-
-    private static final String VERIFY_TOKEN = "meutoken123";
 
 
     @Override
@@ -49,9 +49,14 @@ public class WhatsAppControllerImpl implements WhatsAppController {
 
     @Override
     public ResponseEntity<String> verifyMetaWebhook(String mode, String token, String challenge) {
-
-        if ("subscribe".equalsIgnoreCase(mode) && VERIFY_TOKEN.equals(token)) {
-            return ResponseEntity.ok(challenge == null ? "" : challenge);
+        if ("subscribe".equalsIgnoreCase(mode) && token != null) {
+            var org = organizationRepository.findByTokenWebhookMeta(token);
+            if (org.isPresent()) {
+                if (Boolean.FALSE.equals(org.get().ativo())) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Organização inativa");
+                }
+                return ResponseEntity.ok(challenge == null ? "" : challenge);
+            }
         }
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Invalid verify token");
     }

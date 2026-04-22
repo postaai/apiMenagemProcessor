@@ -4,6 +4,7 @@ import apiMensagem.processor.apiMenagemProcessor.config.AudioDurationUtil;
 import apiMensagem.processor.apiMenagemProcessor.dto.WhatsAppWebhookPayload;
 import apiMensagem.processor.apiMenagemProcessor.dto.messagePayload.WebhookMessagePayload;
 import apiMensagem.processor.apiMenagemProcessor.entity.OrganizationsEntity;
+import apiMensagem.processor.apiMenagemProcessor.exception.OrganizacaoInativaException;
 import apiMensagem.processor.apiMenagemProcessor.gateway.ApiProcessorGateway;
 import apiMensagem.processor.apiMenagemProcessor.gateway.WhatsAppGatewayImpl;
 import apiMensagem.processor.apiMenagemProcessor.gateway.WhatsAppGatewayMetaImpl;
@@ -53,6 +54,10 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
 
             var org = organizationRepository.findByorgId(orgId)
                     .orElseThrow(FileSystemNotFoundException::new);
+
+            if (Boolean.FALSE.equals(org.ativo())) {
+                throw new OrganizacaoInativaException();
+            }
 
             String token = org.token();
             String instanceName = org.instanceName();
@@ -142,6 +147,10 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
             log.info("[META][WEBHOOK][RESOLVE_ORG][IN] idMeta={}", idMeta);
             var oroganization = resolveOrganizationByPhoneNumberId(idMeta);
             log.info("[META][WEBHOOK][RESOLVE_ORG][OUT] idMeta={} orgId={}", oroganization.idMeta(), oroganization.orgId());
+
+            if (Boolean.FALSE.equals(oroganization.ativo())) {
+                throw new OrganizacaoInativaException();
+            }
 
             if (change.value.contacts == null || change.value.contacts.isEmpty()) {
                 log.info("[META][WEBHOOK][INFO] Contacts não encontrado no payload: entryId={}", idMeta);

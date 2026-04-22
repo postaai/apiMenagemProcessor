@@ -1,7 +1,9 @@
 package apiMensagem.processor.apiMenagemProcessor.useCase;
 
 import apiMensagem.processor.apiMenagemProcessor.dto.*;
+import apiMensagem.processor.apiMenagemProcessor.entity.OrganizationsEntity;
 import apiMensagem.processor.apiMenagemProcessor.entity.PlatformEnum;
+import apiMensagem.processor.apiMenagemProcessor.exception.OrganizacaoInativaException;
 import apiMensagem.processor.apiMenagemProcessor.gateway.WhatsAppGatewayImpl;
 import apiMensagem.processor.apiMenagemProcessor.gateway.WhatsAppGatewayMetaImpl;
 import apiMensagem.processor.apiMenagemProcessor.repository.OrganizationRepository;
@@ -21,12 +23,19 @@ public class SendMessageUseCaseImpl implements SendMessageUseCase {
     private final WhatsAppGatewayImpl whatsAppGatewayEvolution;
     private final WhatsAppGatewayMetaImpl whatsAppGatewayMeta;
 
+    private void checkAtivo(OrganizationsEntity organization) {
+        if (Boolean.FALSE.equals(organization.ativo())) {
+            throw new OrganizacaoInativaException();
+        }
+    }
+
     @Override
     public void sendMessageWhatsApp(MessageRequest request) {
         try {
 
             var organization = repository.findByorgId(request.orgId())
                     .orElseThrow(FileSystemNotFoundException::new);
+            checkAtivo(organization);
 
             switch (organization.platform()) {
                 case EVOLUTION ->
@@ -46,6 +55,7 @@ public class SendMessageUseCaseImpl implements SendMessageUseCase {
 
             var organization = repository.findByorgId(request.orgId())
                     .orElseThrow(FileSystemNotFoundException::new);
+            checkAtivo(organization);
 
             switch (organization.platform()) {
                 case EVOLUTION ->
@@ -65,6 +75,7 @@ public class SendMessageUseCaseImpl implements SendMessageUseCase {
         try {
             var organization = repository.findByorgId(request.orgId())
                     .orElseThrow(FileSystemNotFoundException::new);
+            checkAtivo(organization);
 
             switch (organization.platform()) {
                 case EVOLUTION ->
@@ -85,6 +96,7 @@ public class SendMessageUseCaseImpl implements SendMessageUseCase {
 
             var organization = repository.findByorgId(request.orgId())
                     .orElseThrow(FileSystemNotFoundException::new);
+            checkAtivo(organization);
 
             switch (organization.platform()) {
                 case EVOLUTION ->
@@ -103,6 +115,7 @@ public class SendMessageUseCaseImpl implements SendMessageUseCase {
         try {
             var organization = repository.findByorgId(orgId)
                     .orElseThrow(FileSystemNotFoundException::new);
+            checkAtivo(organization);
 
             if (PlatformEnum.EVOLUTION.equals(organization.platform())) {
                 return whatsAppGatewayEvolution.fetchAllGroups(organization.token(), organization.instanceName(), participants);
@@ -120,6 +133,7 @@ public class SendMessageUseCaseImpl implements SendMessageUseCase {
         try {
             var organization = repository.findByorgId(orgId)
                     .orElseThrow(FileSystemNotFoundException::new);
+            checkAtivo(organization);
 
             if (PlatformEnum.EVOLUTION.equals(organization.platform())) {
                 whatsAppGatewayEvolution.deleteInstance(organization.instanceName());
@@ -146,6 +160,7 @@ public class SendMessageUseCaseImpl implements SendMessageUseCase {
         try {
             var organization = repository.findByorgId(orgId)
                     .orElseThrow(FileSystemNotFoundException::new);
+            checkAtivo(organization);
 
             if (PlatformEnum.EVOLUTION.equals(organization.platform())) {
                 return whatsAppGatewayEvolution.checkInstance(organization.instanceName());

@@ -45,7 +45,9 @@ public record OrganizationsEntity(
         Boolean shouldTerminateChatOnSummary,
         String _class,
         Map<String, SummaryField> sumarySchema,
-        String sumaryWebHookUrl
+        String sumaryWebHookUrl,
+        String tokenWebhookMeta,
+        Boolean ativo
 ) {
     public record SummaryField(
             String type,
