@@ -200,6 +200,53 @@ public class WhatsAppGatewayMetaImpl {
         log.info("[META][SEND_AUDIO][DONE] to={} mediaId={}", to, mediaId);
     }
 
+    @Retryable(
+            value = {HttpServerErrorException.class, HttpClientErrorException.class, SocketTimeoutException.class},
+            maxAttemptsExpression = "${whatsapp.retry.maxAttempts:5}",
+            backoff = @Backoff(delay = 2000, multiplier = 2)
+    )
+    public void sendAudioByMediaId(String to, String mediaId, String token, String phoneNumberId) {
+
+        log.info("[META][SEND_AUDIO_MEDIA_ID][IN] to={} mediaId={} phoneNumberId={}", to, mediaId, phoneNumberId);
+
+        if (mediaId == null || mediaId.isBlank()) {
+            log.error("[META][SEND_AUDIO_MEDIA_ID][ERRO] mediaId vazio");
+            throw new IllegalArgumentException("mediaId vazio");
+        }
+
+        WebClient graph = WebClient.builder()
+                .baseUrl("https://graph.facebook.com")
+                .build();
+
+        Map<String, Object> payload = Map.of(
+                "messaging_product", "whatsapp",
+                "to", to,
+                "type", "audio",
+                "audio", Map.of("id", mediaId)
+        );
+
+        log.info("[META][SEND_AUDIO_MEDIA_ID][MESSAGE][IN] endpoint=/v22.0/{}/messages payload={}", phoneNumberId, payload);
+
+        graph.post()
+                .uri("/v22.0/{phoneNumberId}/messages", phoneNumberId)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(payload)
+                .retrieve()
+                .onStatus(s -> !s.is2xxSuccessful(), resp ->
+                        resp.bodyToMono(String.class).flatMap(body -> {
+                            log.error("[META][SEND_AUDIO_MEDIA_ID][MESSAGE][ERRO] status={} body={}",
+                                    resp.statusCode().value(), body);
+                            return Mono.error(new RuntimeException("Meta send audio by mediaId erro: " + body));
+                        })
+                )
+                .bodyToMono(String.class)
+                .doOnNext(resp -> log.info("[META][SEND_AUDIO_MEDIA_ID][MESSAGE][OK] response={}", resp))
+                .block();
+
+        log.info("[META][SEND_AUDIO_MEDIA_ID][DONE] to={} mediaId={}", to, mediaId);
+    }
+
     private record MediaUploadResponse(String id) {}
 
     /**
@@ -235,5 +282,10 @@ public class WhatsAppGatewayMetaImpl {
     @Recover
     public void recoverSendAudio(Exception e, String to, String base64Audio, String token, String phoneNumberId) {
         log.error("[META][RECOVER][AUDIO] to={} erro={}", to, e.toString(), e);
+    }
+
+    @Recover
+    public void recoverSendAudioByMediaId(Exception e, String to, String mediaId, String token, String phoneNumberId) {
+        log.error("[META][RECOVER][AUDIO_MEDIA_ID] to={} mediaId={} erro={}", to, mediaId, e.toString(), e);
     }
 }

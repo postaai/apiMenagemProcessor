@@ -91,6 +91,25 @@ public class SendMessageUseCaseImpl implements SendMessageUseCase {
     }
 
     @Override
+    public void sendAudioByMediaId(AudioMediaIdRequest request) {
+        try {
+            var organization = repository.findByorgId(request.orgId())
+                    .orElseThrow(FileSystemNotFoundException::new);
+            checkAtivo(organization);
+
+            if (!PlatformEnum.META.equals(organization.platform())) {
+                throw new IllegalArgumentException("sendAudioByMediaId suportado apenas para plataforma META");
+            }
+
+            whatsAppGatewayMeta.sendAudioByMediaId(
+                    request.number(), request.mediaId(),
+                    organization.tokenMeta(), organization.numberIdMeta());
+        } catch (Exception e) {
+            throw new FileSystemNotFoundException();
+        }
+    }
+
+    @Override
     public void sendLocation(LocationRequest request) {
         try {
 

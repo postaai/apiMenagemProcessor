@@ -12,6 +12,8 @@ public interface SendMessageUseCase {
 
     void sendAudio(AudioRequest request);
 
+    void sendAudioByMediaId(AudioMediaIdRequest request);
+
     void sendLocation(LocationRequest request);
 
     List<WhatsAppGroupResponse> getWhatsAppGroups(String orgId, boolean participants);
