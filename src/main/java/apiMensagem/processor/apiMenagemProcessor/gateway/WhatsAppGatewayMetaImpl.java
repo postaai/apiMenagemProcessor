@@ -262,6 +262,63 @@ public class WhatsAppGatewayMetaImpl {
         return WhatsAppResponse.builder().build();
     }
 
+    @Retryable(
+            value = {HttpServerErrorException.class, HttpClientErrorException.class, SocketTimeoutException.class},
+            maxAttemptsExpression = "${whatsapp.retry.maxAttempts:5}",
+            backoff = @Backoff(delay = 2000, multiplier = 2)
+    )
+    public void sendImageByLink(String to, String link, String caption, String token, String phoneNumberId) {
+
+        log.info("[META][SEND_IMAGE_LINK][IN] to={} phoneNumberId={} link={}", to, phoneNumberId, link);
+
+        if (link == null || link.isBlank()) {
+            throw new IllegalArgumentException("link da imagem vazio");
+        }
+
+        WebClient graph = WebClient.builder()
+                .baseUrl("https://graph.facebook.com")
+                .build();
+
+        Map<String, Object> imagePayload = new java.util.HashMap<>();
+        imagePayload.put("link", link);
+        if (caption != null && !caption.isBlank()) {
+            imagePayload.put("caption", caption);
+        }
+
+        Map<String, Object> payload = Map.of(
+                "messaging_product", "whatsapp",
+                "to", to,
+                "type", "image",
+                "image", imagePayload
+        );
+
+        log.info("[META][SEND_IMAGE_LINK][MESSAGE][IN] endpoint=/v22.0/{}/messages payload={}", phoneNumberId, payload);
+
+        graph.post()
+                .uri("/v22.0/{phoneNumberId}/messages", phoneNumberId)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(payload)
+                .retrieve()
+                .onStatus(s -> !s.is2xxSuccessful(), resp ->
+                        resp.bodyToMono(String.class).flatMap(body -> {
+                            log.error("[META][SEND_IMAGE_LINK][MESSAGE][ERRO] status={} body={}",
+                                    resp.statusCode().value(), body);
+                            return Mono.error(new RuntimeException("Meta send image by link erro: " + body));
+                        })
+                )
+                .bodyToMono(String.class)
+                .doOnNext(resp -> log.info("[META][SEND_IMAGE_LINK][MESSAGE][OK] response={}", resp))
+                .block();
+
+        log.info("[META][SEND_IMAGE_LINK][DONE] to={} link={}", to, link);
+    }
+
+    @Recover
+    public void recoverSendImageByLink(Exception e, String to, String link, String caption, String token, String phoneNumberId) {
+        log.error("[META][RECOVER][IMAGE_LINK] to={} link={} erro={}", to, link, e.toString(), e);
+    }
+
     /**
      * Grupos: NÃO suportado na Cloud API oficial (envio é 1:1 / templates / interativos; grupos demandam soluções não-oficiais).
      * Lançamos UnsupportedOperationException. :contentReference[oaicite:6]{index=6}

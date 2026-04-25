@@ -45,6 +45,10 @@ public interface WhatsAppController {
     @PostMapping("/send-audio-by-media-id")
     ResponseEntity<Void> sendAudioByMediaId(@RequestBody AudioMediaIdRequest request);
 
+    @Operation(summary = "sendImageByLink")
+    @PostMapping("/send-image-by-link")
+    ResponseEntity<Void> sendImageByLink(@RequestBody ImageLinkRequest request);
+
     @Operation(summary = "findGroups")
     @PostMapping("/find-groups")
     ResponseEntity<List<WhatsAppGroupResponse>> findGroups(@Parameter(description = "ID da organização") String orgId, @Parameter(description = "Incluir participantes") boolean participants);

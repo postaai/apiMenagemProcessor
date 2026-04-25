@@ -88,6 +88,12 @@ public class WhatsAppControllerImpl implements WhatsAppController {
     }
 
     @Override
+    public ResponseEntity<Void> sendImageByLink(ImageLinkRequest request) {
+        sendMessageUseCase.sendImageByLink(request);
+        return ResponseEntity.ok().build();
+    }
+
+    @Override
     public ResponseEntity<List<WhatsAppGroupResponse>> findGroups(String orgId, boolean participants) {
        var groups = sendMessageUseCase.getWhatsAppGroups(orgId, participants);
         return ResponseEntity.ok(groups);

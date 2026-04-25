@@ -137,6 +137,34 @@ public class WhatsAppGatewayImpl {
         return response.getBody();
     }
 
+    @Retryable(
+            value = {HttpServerErrorException.class, HttpClientErrorException.class, SocketTimeoutException.class},
+            maxAttemptsExpression = "${whatsapp.retry.maxAttempts:5}",
+            backoff = @Backoff(delay = 2000, multiplier = 2)
+    )
+    public void sendImageByLink(String to, String link, String caption, String token, String instanceName) {
+        final RestTemplate restTemplate = new RestTemplate();
+
+        String url = HOST_URL + "/message/sendMedia/" + instanceName;
+        log.info("[IMAGE_LINK] Enviando imagem para {} via {}", to, url);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("apikey", token);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("number", to);
+        payload.put("mediatype", "image");
+        payload.put("mimetype", "image/jpeg");
+        payload.put("media", link);
+        payload.put("caption", caption != null ? caption : "");
+
+        HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
+
+        ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+        log.info("[IMAGE_LINK] Imagem enviada com sucesso para {} - Status: {}", to, response.getStatusCode());
+    }
+
     public List<WhatsAppGroupResponse> fetchAllGroups(String token, String instanceName, boolean getParticipants) throws Exception {
         final RestTemplate restTemplate = new RestTemplate();
         String url = HOST_URL + "/group/fetchAllGroups/" + instanceName + "?getParticipants=" + getParticipants;
@@ -267,5 +295,10 @@ public class WhatsAppGatewayImpl {
     @Recover
     public void recoverSendAudio(Exception e, String to, String base64Audio, String token, String instanceName) {
         log.error("[RECOVER] Tentativas esgotadas ao enviar áudio para {}: {}", to, e.getMessage(), e);
+    }
+
+    @Recover
+    public void recoverSendImageByLink(Exception e, String to, String link, String caption, String token, String instanceName) {
+        log.error("[RECOVER] Tentativas esgotadas ao enviar imagem para {}: {}", to, e.getMessage(), e);
     }
 }

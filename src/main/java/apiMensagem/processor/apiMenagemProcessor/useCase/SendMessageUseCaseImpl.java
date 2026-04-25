@@ -110,6 +110,25 @@ public class SendMessageUseCaseImpl implements SendMessageUseCase {
     }
 
     @Override
+    public void sendImageByLink(ImageLinkRequest request) {
+        try {
+            var organization = repository.findByorgId(request.orgId())
+                    .orElseThrow(FileSystemNotFoundException::new);
+            checkAtivo(organization);
+
+            switch (organization.platform()) {
+                case EVOLUTION ->
+                        whatsAppGatewayEvolution.sendImageByLink(request.number(), request.link(), request.caption(), organization.token(), organization.instanceName());
+                case META ->
+                        whatsAppGatewayMeta.sendImageByLink(request.number(), request.link(), request.caption(), organization.tokenMeta(), organization.numberIdMeta());
+                default -> throw new IllegalArgumentException("Plataforma não encontrada " + organization.platform());
+            }
+        } catch (Exception e) {
+            throw new FileSystemNotFoundException();
+        }
+    }
+
+    @Override
     public void sendLocation(LocationRequest request) {
         try {
 
