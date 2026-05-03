@@ -2,6 +2,7 @@ package apiMensagem.processor.apiMenagemProcessor.useCase;
 
 import apiMensagem.processor.apiMenagemProcessor.dto.*;
 import apiMensagem.processor.apiMenagemProcessor.entity.OrganizationsEntity;
+import org.springframework.web.multipart.MultipartFile;
 import apiMensagem.processor.apiMenagemProcessor.entity.PlatformEnum;
 import apiMensagem.processor.apiMenagemProcessor.exception.OrganizacaoInativaException;
 import apiMensagem.processor.apiMenagemProcessor.gateway.WhatsAppGatewayImpl;
@@ -124,6 +125,45 @@ public class SendMessageUseCaseImpl implements SendMessageUseCase {
                 default -> throw new IllegalArgumentException("Plataforma não encontrada " + organization.platform());
             }
         } catch (Exception e) {
+            throw new FileSystemNotFoundException();
+        }
+    }
+
+    @Override
+    public UploadMediaResponse uploadMedia(String orgId, MultipartFile file, String mimeType) {
+        try {
+            var organization = repository.findByorgId(orgId)
+                    .orElseThrow(FileSystemNotFoundException::new);
+            checkAtivo(organization);
+
+            if (!PlatformEnum.META.equals(organization.platform())) {
+                throw new IllegalArgumentException("uploadMedia suportado apenas para plataforma META");
+            }
+
+            String mediaId = whatsAppGatewayMeta.uploadMedia(file, mimeType, organization.tokenMeta(), organization.numberIdMeta());
+            return new UploadMediaResponse(mediaId);
+        } catch (Exception e) {
+            log.info("Erro ao fazer upload de mídia: {}", e.getMessage());
+            throw new FileSystemNotFoundException();
+        }
+    }
+
+    @Override
+    public void sendMediaById(SendMediaByIdRequest request) {
+        try {
+            var organization = repository.findByorgId(request.orgId())
+                    .orElseThrow(FileSystemNotFoundException::new);
+            checkAtivo(organization);
+
+            if (!PlatformEnum.META.equals(organization.platform())) {
+                throw new IllegalArgumentException("sendMediaById suportado apenas para plataforma META");
+            }
+
+            whatsAppGatewayMeta.sendMediaById(
+                    request.number(), request.mediaId(), request.type(),
+                    request.caption(), organization.tokenMeta(), organization.numberIdMeta());
+        } catch (Exception e) {
+            log.info("Erro ao enviar mídia por id: {}", e.getMessage());
             throw new FileSystemNotFoundException();
         }
     }

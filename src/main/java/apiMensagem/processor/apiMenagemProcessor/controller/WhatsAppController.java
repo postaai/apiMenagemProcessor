@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -48,6 +49,17 @@ public interface WhatsAppController {
     @Operation(summary = "sendImageByLink")
     @PostMapping("/send-image-by-link")
     ResponseEntity<Void> sendImageByLink(@RequestBody ImageLinkRequest request);
+
+    @Operation(summary = "uploadMedia - Exclusivo META: faz upload do arquivo e retorna o mediaId")
+    @PostMapping(value = "/upload-media", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    ResponseEntity<UploadMediaResponse> uploadMedia(
+            @RequestParam("orgId") String orgId,
+            @RequestPart("file") MultipartFile file,
+            @RequestParam("type") String type);
+
+    @Operation(summary = "sendMediaById - Exclusivo META: envia mídia já cadastrada pelo mediaId")
+    @PostMapping("/send-media-by-id")
+    ResponseEntity<Void> sendMediaById(@RequestBody SendMediaByIdRequest request);
 
     @Operation(summary = "findGroups")
     @PostMapping("/find-groups")

@@ -16,8 +16,12 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -317,6 +321,125 @@ public class WhatsAppGatewayMetaImpl {
     @Recover
     public void recoverSendImageByLink(Exception e, String to, String link, String caption, String token, String phoneNumberId) {
         log.error("[META][RECOVER][IMAGE_LINK] to={} link={} erro={}", to, link, e.toString(), e);
+    }
+
+    @Retryable(
+            value = {HttpServerErrorException.class, HttpClientErrorException.class, SocketTimeoutException.class},
+            maxAttemptsExpression = "${whatsapp.retry.maxAttempts:5}",
+            backoff = @Backoff(delay = 2000, multiplier = 2)
+    )
+    public String uploadMedia(MultipartFile file, String mimeType, String token, String phoneNumberId) {
+        log.info("[META][UPLOAD_MEDIA][IN] phoneNumberId={} mimeType={} fileName={} size={}",
+                phoneNumberId, mimeType, file.getOriginalFilename(), file.getSize());
+
+        byte[] fileBytes;
+        try {
+            fileBytes = file.getBytes();
+        } catch (IOException e) {
+            log.error("[META][UPLOAD_MEDIA][ERRO] Falha ao ler bytes do arquivo", e);
+            throw new RuntimeException("Falha ao ler arquivo para upload", e);
+        }
+
+        String filename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "media";
+
+        WebClient graph = WebClient.builder()
+                .baseUrl("https://graph.facebook.com")
+                .build();
+
+        MultipartBodyBuilder mb = new MultipartBodyBuilder();
+        mb.part("messaging_product", "whatsapp");
+        mb.part("type", mimeType);
+        mb.part("file", new ByteArrayResource(fileBytes) {
+            @Override
+            public String getFilename() {
+                return filename;
+            }
+        }).header(HttpHeaders.CONTENT_TYPE, mimeType);
+
+        String mediaId = graph.post()
+                .uri("/v22.0/{phoneNumberId}/media", phoneNumberId)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .bodyValue(mb.build())
+                .retrieve()
+                .onStatus(s -> !s.is2xxSuccessful(), resp ->
+                        resp.bodyToMono(String.class).flatMap(body -> {
+                            log.error("[META][UPLOAD_MEDIA][ERRO] status={} body={}",
+                                    resp.statusCode().value(), body);
+                            return Mono.error(new RuntimeException("Meta media upload erro: " + body));
+                        })
+                )
+                .bodyToMono(MediaUploadResponse.class)
+                .map(MediaUploadResponse::id)
+                .block();
+
+        if (mediaId == null || mediaId.isBlank()) {
+            throw new IllegalStateException("Meta não retornou mediaId no upload");
+        }
+
+        log.info("[META][UPLOAD_MEDIA][DONE] phoneNumberId={} mediaId={}", phoneNumberId, mediaId);
+        return mediaId;
+    }
+
+    @Recover
+    public String recoverUploadMedia(Exception e, MultipartFile file, String mimeType, String token, String phoneNumberId) {
+        log.error("[META][RECOVER][UPLOAD_MEDIA] phoneNumberId={} mimeType={} erro={}", phoneNumberId, mimeType, e.toString(), e);
+        throw new RuntimeException("Falha ao fazer upload de mídia após tentativas: " + e.getMessage(), e);
+    }
+
+    @Retryable(
+            value = {HttpServerErrorException.class, HttpClientErrorException.class, SocketTimeoutException.class},
+            maxAttemptsExpression = "${whatsapp.retry.maxAttempts:5}",
+            backoff = @Backoff(delay = 2000, multiplier = 2)
+    )
+    public void sendMediaById(String to, String mediaId, String type, String caption, String token, String phoneNumberId) {
+        log.info("[META][SEND_MEDIA_ID][IN] to={} type={} mediaId={} phoneNumberId={}", to, type, mediaId, phoneNumberId);
+
+        if (mediaId == null || mediaId.isBlank()) {
+            throw new IllegalArgumentException("mediaId vazio");
+        }
+
+        WebClient graph = WebClient.builder()
+                .baseUrl("https://graph.facebook.com")
+                .build();
+
+        Map<String, Object> mediaPayload = new HashMap<>();
+        mediaPayload.put("id", mediaId);
+        if (caption != null && !caption.isBlank() && !"audio".equalsIgnoreCase(type)) {
+            mediaPayload.put("caption", caption);
+        }
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("messaging_product", "whatsapp");
+        payload.put("to", to);
+        payload.put("type", type.toLowerCase());
+        payload.put(type.toLowerCase(), mediaPayload);
+
+        log.info("[META][SEND_MEDIA_ID][MESSAGE][IN] endpoint=/v22.0/{}/messages payload={}", phoneNumberId, payload);
+
+        graph.post()
+                .uri("/v22.0/{phoneNumberId}/messages", phoneNumberId)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(payload)
+                .retrieve()
+                .onStatus(s -> !s.is2xxSuccessful(), resp ->
+                        resp.bodyToMono(String.class).flatMap(body -> {
+                            log.error("[META][SEND_MEDIA_ID][MESSAGE][ERRO] status={} body={}",
+                                    resp.statusCode().value(), body);
+                            return Mono.error(new RuntimeException("Meta send media by id erro: " + body));
+                        })
+                )
+                .bodyToMono(String.class)
+                .doOnNext(resp -> log.info("[META][SEND_MEDIA_ID][MESSAGE][OK] response={}", resp))
+                .block();
+
+        log.info("[META][SEND_MEDIA_ID][DONE] to={} type={} mediaId={}", to, type, mediaId);
+    }
+
+    @Recover
+    public void recoverSendMediaById(Exception e, String to, String mediaId, String type, String caption, String token, String phoneNumberId) {
+        log.error("[META][RECOVER][SEND_MEDIA_ID] to={} type={} mediaId={} erro={}", to, type, mediaId, e.toString(), e);
     }
 
     /**

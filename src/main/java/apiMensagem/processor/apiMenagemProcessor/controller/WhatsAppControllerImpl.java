@@ -2,6 +2,7 @@ package apiMensagem.processor.apiMenagemProcessor.controller;
 
 import apiMensagem.processor.apiMenagemProcessor.dto.*;
 import apiMensagem.processor.apiMenagemProcessor.dto.messagePayload.WebhookMessagePayload;
+import org.springframework.web.multipart.MultipartFile;
 import apiMensagem.processor.apiMenagemProcessor.repository.OrganizationRepository;
 import apiMensagem.processor.apiMenagemProcessor.useCase.ReceiveMessageUseCase;
 import apiMensagem.processor.apiMenagemProcessor.useCase.SendMessageUseCase;
@@ -90,6 +91,18 @@ public class WhatsAppControllerImpl implements WhatsAppController {
     @Override
     public ResponseEntity<Void> sendImageByLink(ImageLinkRequest request) {
         sendMessageUseCase.sendImageByLink(request);
+        return ResponseEntity.ok().build();
+    }
+
+    @Override
+    public ResponseEntity<UploadMediaResponse> uploadMedia(String orgId, MultipartFile file, String type) {
+        var response = sendMessageUseCase.uploadMedia(orgId, file, type);
+        return ResponseEntity.ok(response);
+    }
+
+    @Override
+    public ResponseEntity<Void> sendMediaById(SendMediaByIdRequest request) {
+        sendMessageUseCase.sendMediaById(request);
         return ResponseEntity.ok().build();
     }
 
