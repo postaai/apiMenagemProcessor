@@ -10,6 +10,7 @@ import apiMensagem.processor.apiMenagemProcessor.gateway.WhatsAppGatewayImpl;
 import apiMensagem.processor.apiMenagemProcessor.gateway.WhatsAppGatewayMetaImpl;
 import apiMensagem.processor.apiMenagemProcessor.gateway.WhatsAppMediaGateway;
 import apiMensagem.processor.apiMenagemProcessor.repository.OrganizationRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,6 +33,8 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
 
     @Value("${processor.limitAudio}")
     private Integer limitAudio;
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Override
     public void receiveMessage(WebhookMessagePayload payload) {
@@ -106,6 +109,14 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
     @Override
     public void receiveStatusMessageMeta(WhatsAppWebhookPayload payload) {
         try {
+            // Log bruto do body recebido ANTES de qualquer validação para facilitar troubleshooting.
+            try {
+                String rawBody = OBJECT_MAPPER.writeValueAsString(payload);
+                log.info("[META][WEBHOOK][RAW_BODY] {}", rawBody);
+            } catch (Exception ex) {
+                log.warn("[META][WEBHOOK][RAW_BODY][ERRO] não foi possível serializar payload para log", ex);
+            }
+
             log.info("[META][WEBHOOK][IN] payloadRecebido={}", payload);
 
             if (payload == null || payload.entry == null || payload.entry.isEmpty()) {
