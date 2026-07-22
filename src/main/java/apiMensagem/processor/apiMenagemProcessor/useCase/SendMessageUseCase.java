@@ -21,6 +21,8 @@ public interface SendMessageUseCase {
 
     void sendMediaById(SendMediaByIdRequest request);
 
+    void sendMediaByLink(MediaLinkRequest request);
+
     void sendLocation(LocationRequest request);
 
     List<WhatsAppGroupResponse> getWhatsAppGroups(String orgId, boolean participants);

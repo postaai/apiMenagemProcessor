@@ -443,6 +443,77 @@ public class WhatsAppGatewayMetaImpl {
     }
 
     /**
+     * Envio de mídia via link, com tipo dinâmico (image, video, audio, document, sticker).
+     * Segue o mesmo formato de payload da Graph API usado em sendImageByLink/sendMediaById,
+     * generalizado para qualquer tipo suportado.
+     */
+    @Retryable(
+            value = {HttpServerErrorException.class, HttpClientErrorException.class, SocketTimeoutException.class},
+            maxAttemptsExpression = "${whatsapp.retry.maxAttempts:5}",
+            backoff = @Backoff(delay = 2000, multiplier = 2)
+    )
+    public void sendMediaByLink(String to, String link, String type, String caption, String filename, Boolean voice, String token, String phoneNumberId) {
+        log.info("[META][SEND_MEDIA_LINK][IN] to={} type={} phoneNumberId={} link={}", to, type, phoneNumberId, link);
+
+        if (link == null || link.isBlank()) {
+            throw new IllegalArgumentException("link da mídia vazio");
+        }
+        if (type == null || type.isBlank()) {
+            throw new IllegalArgumentException("type da mídia vazio");
+        }
+
+        String mediaType = type.toLowerCase();
+
+        WebClient graph = WebClient.builder()
+                .baseUrl("https://graph.facebook.com")
+                .build();
+
+        Map<String, Object> mediaPayload = new HashMap<>();
+        mediaPayload.put("link", link);
+        if (caption != null && !caption.isBlank() && !"audio".equals(mediaType) && !"sticker".equals(mediaType)) {
+            mediaPayload.put("caption", caption);
+        }
+        if ("document".equals(mediaType) && filename != null && !filename.isBlank()) {
+            mediaPayload.put("filename", filename);
+        }
+        if ("audio".equals(mediaType) && Boolean.TRUE.equals(voice)) {
+            mediaPayload.put("voice", true);
+        }
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("messaging_product", "whatsapp");
+        payload.put("to", to);
+        payload.put("type", mediaType);
+        payload.put(mediaType, mediaPayload);
+
+        log.info("[META][SEND_MEDIA_LINK][MESSAGE][IN] endpoint=/v22.0/{}/messages payload={}", phoneNumberId, payload);
+
+        graph.post()
+                .uri("/v22.0/{phoneNumberId}/messages", phoneNumberId)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(payload)
+                .retrieve()
+                .onStatus(s -> !s.is2xxSuccessful(), resp ->
+                        resp.bodyToMono(String.class).flatMap(body -> {
+                            log.error("[META][SEND_MEDIA_LINK][MESSAGE][ERRO] status={} body={}",
+                                    resp.statusCode().value(), body);
+                            return Mono.error(new RuntimeException("Meta send media by link erro: " + body));
+                        })
+                )
+                .bodyToMono(String.class)
+                .doOnNext(resp -> log.info("[META][SEND_MEDIA_LINK][MESSAGE][OK] response={}", resp))
+                .block();
+
+        log.info("[META][SEND_MEDIA_LINK][DONE] to={} type={} link={}", to, mediaType, link);
+    }
+
+    @Recover
+    public void recoverSendMediaByLink(Exception e, String to, String link, String type, String caption, String filename, Boolean voice, String token, String phoneNumberId) {
+        log.error("[META][RECOVER][SEND_MEDIA_LINK] to={} type={} link={} erro={}", to, type, link, e.toString(), e);
+    }
+
+    /**
      * Grupos: NÃO suportado na Cloud API oficial (envio é 1:1 / templates / interativos; grupos demandam soluções não-oficiais).
      * Lançamos UnsupportedOperationException. :contentReference[oaicite:6]{index=6}
      */

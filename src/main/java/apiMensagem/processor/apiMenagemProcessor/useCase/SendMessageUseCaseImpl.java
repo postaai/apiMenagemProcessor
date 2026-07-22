@@ -169,6 +169,26 @@ public class SendMessageUseCaseImpl implements SendMessageUseCase {
     }
 
     @Override
+    public void sendMediaByLink(MediaLinkRequest request) {
+        try {
+            var organization = repository.findByorgId(request.orgId())
+                    .orElseThrow(FileSystemNotFoundException::new);
+            checkAtivo(organization);
+
+            if (!PlatformEnum.META.equals(organization.platform())) {
+                throw new IllegalArgumentException("sendMediaByLink suportado apenas para plataforma META");
+            }
+
+            whatsAppGatewayMeta.sendMediaByLink(
+                    request.number(), request.link(), request.type(), request.caption(),
+                    request.filename(), request.voice(), organization.tokenMeta(), organization.numberIdMeta());
+        } catch (Exception e) {
+            log.info("Erro ao enviar mídia por link: {}", e.getMessage());
+            throw new FileSystemNotFoundException();
+        }
+    }
+
+    @Override
     public void sendLocation(LocationRequest request) {
         try {
 
