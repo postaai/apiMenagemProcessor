@@ -39,9 +39,9 @@ public class WhatsAppControllerImpl implements WhatsAppController {
     public ResponseEntity<Void> receiveMessage(WebhookMessagePayload payload) {
         try {
             String json = objectMapper.writeValueAsString(payload);
-            log.info("📥 Mensagem recebida via webhook:\n{}", json);
+            log.info("[WEBHOOK][RECEIVE][IN] payload={}", json);
         } catch (JsonProcessingException e) {
-            log.error("Erro ao converter payload para JSON: {}", e.getMessage());
+            log.error("[WEBHOOK][RECEIVE][ERRO] falha ao converter payload para JSON: {}", e.getMessage());
         }
 
         receiveMessageUseCase.receiveMessage(payload);
@@ -50,21 +50,25 @@ public class WhatsAppControllerImpl implements WhatsAppController {
 
     @Override
     public ResponseEntity<String> verifyMetaWebhook(String mode, String token, String challenge) {
+        log.info("[META][WEBHOOK][VERIFY][IN] mode={} token={} challenge={}", mode, token, challenge);
         if ("subscribe".equalsIgnoreCase(mode) && token != null) {
             var org = organizationRepository.findByTokenWebhookMeta(token);
             if (org.isPresent()) {
                 if (Boolean.FALSE.equals(org.get().ativo())) {
+                    log.warn("[META][WEBHOOK][VERIFY][REJECTED] organizacao inativa token={}", token);
                     return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Organização inativa");
                 }
+                log.info("[META][WEBHOOK][VERIFY][OK] token={} challenge={}", token, challenge);
                 return ResponseEntity.ok(challenge == null ? "" : challenge);
             }
         }
+        log.warn("[META][WEBHOOK][VERIFY][REJECTED] token invalido ou mode diferente de subscribe mode={} token={}", mode, token);
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Invalid verify token");
     }
 
     @Override
     public ResponseEntity<Void> receiveMessageMeta(WhatsAppWebhookPayload payload) {
-        log.info("📥 Mensagem recebida via webhook Meta:\n{}", payload);
+        log.info("[META][WEBHOOK][RECEIVE][IN] payload={}", payload);
         receiveMessageUseCase.receiveStatusMessageMeta(payload);
         return ResponseEntity.ok().build();
     }
