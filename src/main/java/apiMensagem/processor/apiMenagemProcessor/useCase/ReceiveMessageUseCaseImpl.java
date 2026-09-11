@@ -110,18 +110,19 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
     public void receiveStatusMessageMeta(WhatsAppWebhookPayload payload) {
         try {
             // Log bruto do body recebido ANTES de qualquer validação para facilitar troubleshooting.
+            String rawBody = null;
             try {
-                String rawBody = OBJECT_MAPPER.writeValueAsString(payload);
+                rawBody = OBJECT_MAPPER.writeValueAsString(payload);
                 log.info("[META][WEBHOOK][RAW_BODY] {}", rawBody);
             } catch (Exception ex) {
                 log.warn("[META][WEBHOOK][RAW_BODY][ERRO] não foi possível serializar payload para log", ex);
             }
 
-            log.info("[META][WEBHOOK][IN] payloadRecebido={}", payload);
+            log.info("[META][WEBHOOK][IN] payloadRecebido={}", rawBody);
 
             if (payload == null || payload.entry == null || payload.entry.isEmpty()) {
                 log.error("[META][WEBHOOK][ERRO] payload nulo/vazio: payload={}, entry={}",
-                        payload, (payload != null ? payload.entry : null));
+                        rawBody, (payload != null ? payload.entry : null));
                 throw new IllegalArgumentException("Payload do webhook está vazio ou nulo");
             }
 
@@ -187,10 +188,11 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
                 case "text": {
                     String textoRecebido = (m0.text != null ? m0.text.body : null);
 
-                    log.info("[META][WEBHOOK][TEXT][IN] waId={} orgId={} nome={}",
+                    log.info("[META][WEBHOOK][TEXT][IN] waId={} orgId={} nome={} texto={}",
                             numeroId,
                             (oroganization != null ? oroganization.orgId() : null),
-                            nomeContato);
+                            nomeContato,
+                            textoRecebido);
 
                     apiProcessorGateway.sendTextMessage(
                             numeroId,
