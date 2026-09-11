@@ -292,9 +292,18 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
                     log.info("[META][WEBHOOK][LOCATION] messageId={} from={}", m0.id, m0.from);
                     break;
 
-                default:
-                    log.info("[META][WEBHOOK][UNHANDLED] type={} messageId={} from={}", tipo, m0.id, m0.from);
+                default: {
+                    String errorDetails = null;
+                    if (m0.errors != null && !m0.errors.isEmpty()) {
+                        var err = m0.errors.getFirst();
+                        errorDetails = String.format("code=%s title=%s message=%s details=%s",
+                                err.code, err.title, err.message,
+                                (err.errorData != null ? err.errorData.details : null));
+                    }
+                    log.info("[META][WEBHOOK][UNHANDLED] type={} messageId={} from={} errors={}",
+                            tipo, m0.id, m0.from, errorDetails);
                     break;
+                }
             }
 
         } catch (Exception e) {

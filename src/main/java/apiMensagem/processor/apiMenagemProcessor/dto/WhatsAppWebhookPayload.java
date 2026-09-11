@@ -78,6 +78,24 @@ public class WhatsAppWebhookPayload {
 
         // type = "location"
         public Location location;
+
+        // presente quando type = "unsupported"
+        public List<Error> errors;
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Error {
+        public Integer code;
+        public String title;
+        public String message;
+
+        @JsonProperty("error_data")
+        public ErrorData errorData;
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class ErrorData {
+        public String details;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
