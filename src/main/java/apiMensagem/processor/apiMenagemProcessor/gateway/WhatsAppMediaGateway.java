@@ -1,8 +1,10 @@
 package apiMensagem.processor.apiMenagemProcessor.gateway;
 
 import apiMensagem.processor.apiMenagemProcessor.entity.OrganizationsEntity;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -26,15 +28,20 @@ public class WhatsAppMediaGateway {
 
     private static final Logger log = LoggerFactory.getLogger(WhatsAppMediaGateway.class);
 
-    private final WebClient graphClient;
-    private final WebClient downloadClient;
+    @Value("${whatsapp.meta.graph-base-url}")
+    private String graphBaseUrl;
 
-    public WhatsAppMediaGateway() {
+    @Value("${whatsapp.meta.graph-version}")
+    private String graphVersion;
+
+    private WebClient graphClient;
+    private final WebClient downloadClient = WebClient.builder().build();
+
+    @PostConstruct
+    private void init() {
         this.graphClient = WebClient.builder()
-                .baseUrl("https://graph.facebook.com")
+                .baseUrl(graphBaseUrl)
                 .build();
-
-        this.downloadClient = WebClient.builder().build();
     }
 
     /**
@@ -48,13 +55,11 @@ public class WhatsAppMediaGateway {
             return null;
         }
 
-        String version = "v22.0";
-
         log.info("[META][MEDIA][META][IN] orgId={} mediaId={}",
                 organization.orgId(), mediaId);
 
         return graphClient.get()
-                .uri("/{version}/{mediaId}", version, mediaId)
+                .uri("/{version}/{mediaId}", graphVersion, mediaId)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + organization.tokenMeta())
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()

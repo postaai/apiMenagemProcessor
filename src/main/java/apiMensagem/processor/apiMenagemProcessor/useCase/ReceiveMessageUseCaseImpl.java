@@ -308,43 +308,4 @@ public class ReceiveMessageUseCaseImpl implements ReceiveMessageUseCase {
         // Se seu domínio usa orgId como 'instance', mapeie phoneNumberId->orgId numa tabela.
         return organizationRepository.findByIdMeta(idMeta).orElse(null);
     }
-
-    /**
-     * Obtém a URL temporária do media do Meta (Cloud API) usando o media-id.
-     * 1) GET https://graph.facebook.com/v20.0/{media-id}  (Authorization: Bearer {token})
-     * → { "url": "https://..." , "mime_type": "...", ... }
-     * 2) A URL retornada exige novo GET com o mesmo header Authorization para baixar o binário.
-     * <p>
-     * Aqui retornamos a URL para que seu processor/gateway faça o download/autorização.
-     * Se preferir baixar aqui, faça um segundo GET com header Authorization e encaminhe o binário ao seu backend.
-     */
-    private String getMetaMediaUrl(String mediaId, String token) {
-        try {
-            var http = java.net.http.HttpClient.newHttpClient();
-            var req = java.net.http.HttpRequest.newBuilder()
-                    .uri(java.net.URI.create("https://graph.facebook.com/v20.0/" + mediaId))
-                    .header("Authorization", "Bearer " + token)
-                    .GET()
-                    .build();
-
-            var resp = http.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
-            if (resp.statusCode() >= 200 && resp.statusCode() < 300) {
-                // Usa Jackson para extrair o campo "url"
-                var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-                var node = mapper.readTree(resp.body());
-                var urlNode = node.get("url");
-                if (urlNode != null && !urlNode.isNull()) {
-                    return urlNode.asText();
-                }
-            } else {
-                log.warn("Falha ao consultar media-id no Graph. status={}, body={}", resp.statusCode(), resp.body());
-            }
-        } catch (Exception e) {
-            log.error("Erro ao obter URL do media (Meta): {}", e.getMessage(), e);
-        }
-        return null;
-
-    }
-
-
 }

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
@@ -24,7 +25,11 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class WhatsAppGatewayImpl {
 
-    public static final String HOST_URL = "https://vision2.visionaitech.com.br";
+    @Value("${whatsapp.evolution.host}")
+    private String hostUrl;
+
+    @Value("${whatsapp.evolution.api-key}")
+    private String evolutionApiKey;
 
     @Retryable(
             value = {HttpServerErrorException.class, HttpClientErrorException.class, SocketTimeoutException.class},
@@ -34,7 +39,7 @@ public class WhatsAppGatewayImpl {
     public WhatsAppResponse sendMessage(String to, String message, String token, String instanceName) throws Exception {
         final RestTemplate restTemplate = new RestTemplate();
 
-        String url = HOST_URL + "/message/sendText/" + instanceName;
+        String url = hostUrl + "/message/sendText/" + instanceName;
         log.info("[ENVIANDO] Enviando mensagem: {}, para {} via {}", message, to, url);
 
         HttpHeaders headers = new HttpHeaders();
@@ -58,7 +63,7 @@ public class WhatsAppGatewayImpl {
     public void typingMessage(String number, Integer delay, String token, String instanceName) {
         final RestTemplate restTemplate = new RestTemplate();
 
-        String url = HOST_URL + "/chat/sendPresence/" + instanceName;
+        String url = hostUrl + "/chat/sendPresence/" + instanceName;
         log.info("[TYPING] Enviando sinal de 'digitando' para {} via {}", number, url);
 
         HttpHeaders headers = new HttpHeaders();
@@ -88,7 +93,7 @@ public class WhatsAppGatewayImpl {
     public void sendAudio(String to, String base64Audio, String token, String instanceName) {
         final RestTemplate restTemplate = new RestTemplate();
 
-        String url = HOST_URL + "/message/sendWhatsAppAudio/" + instanceName;
+        String url = hostUrl + "/message/sendWhatsAppAudio/" + instanceName;
         log.info("[AUDIO] Enviando áudio para {} via {}", to, url);
 
         HttpHeaders headers = new HttpHeaders();
@@ -113,7 +118,7 @@ public class WhatsAppGatewayImpl {
     public WhatsAppResponse sendLocation(String to, String name, String address, double latitude, double longitude, String token, String instanceName) throws Exception {
         final RestTemplate restTemplate = new RestTemplate();
 
-        String url = HOST_URL + "/message/sendLocation/" + instanceName;
+        String url = hostUrl + "/message/sendLocation/" + instanceName;
         log.info("[ENVIANDO] Enviando localização: {}, {}, {} para {} via {}", name, address, latitude + "," + longitude, to, url);
 
         HttpHeaders headers = new HttpHeaders();
@@ -145,7 +150,7 @@ public class WhatsAppGatewayImpl {
     public void sendImageByLink(String to, String link, String caption, String token, String instanceName) {
         final RestTemplate restTemplate = new RestTemplate();
 
-        String url = HOST_URL + "/message/sendMedia/" + instanceName;
+        String url = hostUrl + "/message/sendMedia/" + instanceName;
         log.info("[IMAGE_LINK] Enviando imagem para {} via {}", to, url);
 
         HttpHeaders headers = new HttpHeaders();
@@ -167,7 +172,7 @@ public class WhatsAppGatewayImpl {
 
     public List<WhatsAppGroupResponse> fetchAllGroups(String token, String instanceName, boolean getParticipants) throws Exception {
         final RestTemplate restTemplate = new RestTemplate();
-        String url = HOST_URL + "/group/fetchAllGroups/" + instanceName + "?getParticipants=" + getParticipants;
+        String url = hostUrl + "/group/fetchAllGroups/" + instanceName + "?getParticipants=" + getParticipants;
         log.info("[FETCH GROUPS] Buscando grupos para {} via {}", instanceName, url);
 
         HttpHeaders headers = new HttpHeaders();
@@ -193,11 +198,11 @@ public class WhatsAppGatewayImpl {
 
     public void deleteInstance(String instanceName) {
         final RestTemplate restTemplate = new RestTemplate();
-        String url = HOST_URL + "/instance/delete/" + instanceName;
+        String url = hostUrl + "/instance/delete/" + instanceName;
         log.info("[DELETE INSTANCE] Deletando instância: {} via {}", instanceName, url);
 
         HttpHeaders headers = new HttpHeaders();
-        headers.set("apikey", "vision-api-key");
+        headers.set("apikey", evolutionApiKey);
 
         HttpEntity<Void> request = new HttpEntity<>(headers);
 
@@ -213,16 +218,16 @@ public class WhatsAppGatewayImpl {
 
     public InstanceResponse createInstance(String token, String instanceName, String number){
         final RestTemplate restTemplate = new RestTemplate();
-        String url = HOST_URL + "/instance/create";
+        String url = hostUrl + "/instance/create";
         log.info("[CREATE INSTANCE] Criando instância: {} via {}", instanceName, url);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("apikey", "vision-api-key"); // se quiser, use `headers.set("apikey", token);`
+        headers.set("apikey", evolutionApiKey);
 
         // Webhook config
         Webhook webhook = Webhook.builder()
-                .url("https://vision2.visionaitech.com.br/api-message-processor/api/message/webhook/receive-message")
+                .url(hostUrl + "/api-message-processor/api/message/webhook/receive-message")
                 .byEvents(false)
                 .base64(false)
                 .headers(Map.of("Content-Type", "application/json"))
@@ -255,10 +260,10 @@ public class WhatsAppGatewayImpl {
 
     public CheckInstanceResponse checkInstance(String instanceName) {
         final RestTemplate restTemplate = new RestTemplate();
-        String url = HOST_URL + "/instance/connectionState/" + instanceName;
+        String url = hostUrl + "/instance/connectionState/" + instanceName;
 
         HttpHeaders headers = new HttpHeaders();
-        headers.set("apikey", "vision-api-key");
+        headers.set("apikey", evolutionApiKey);
 
         HttpEntity<Void> request = new HttpEntity<>(headers);
 

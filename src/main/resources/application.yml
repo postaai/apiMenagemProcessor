@@ -1,17 +1,23 @@
 spring:
   data:
     mongodb:
-      uri: ${MONGO_DATABASE_URI:mongodb+srv://apiprodutos:FQGQc80yZxQ341n0@ia-teste.vpt51es.mongodb.net/?retryWrites=true&w=majority&appName=post-ai-database}
+      uri: ${MONGO_DATABASE_URI}
       database: ia-teste
       auto-index-creation: true
 
 processor:
-  host: ${HOSTPROCESSOR:http://92.113.33.84:5000}
+  host: ${HOSTPROCESSOR}
   limitAudio: 10
 
 whatsapp:
   retry:
     maxAttempts: 5
+  evolution:
+    host: ${EVOLUTION_HOST}
+    api-key: ${EVOLUTION_API_KEY}
+  meta:
+    graph-base-url: ${META_GRAPH_BASE_URL}
+    graph-version: ${META_GRAPH_VERSION}
 
 server:
   port: 8181

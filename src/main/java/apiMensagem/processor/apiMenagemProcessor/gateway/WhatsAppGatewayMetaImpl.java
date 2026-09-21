@@ -2,8 +2,9 @@ package apiMensagem.processor.apiMenagemProcessor.gateway;
 
 import apiMensagem.processor.apiMenagemProcessor.dto.WhatsAppGroupResponse;
 import apiMensagem.processor.apiMenagemProcessor.dto.WhatsAppResponse;
-import lombok.RequiredArgsConstructor;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
 import org.springframework.http.client.MultipartBodyBuilder;
@@ -27,17 +28,20 @@ import java.util.Map;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class WhatsAppGatewayMetaImpl {
 
-    // Versão do Graph API (ajuste conforme seu provisionamento)
-    private static final String API_VERSION = "v20.0"; // ou v21.0/v23.0 se estiver liberado
-    private static final String GRAPH_BASE = "https://graph.facebook.com/" + API_VERSION;
-    private final WebClient webClient;
+    @Value("${whatsapp.meta.graph-base-url}")
+    private String graphBaseUrl;
 
-    public WhatsAppGatewayMetaImpl() {
+    @Value("${whatsapp.meta.graph-version}")
+    private String graphVersion;
+
+    private WebClient webClient;
+
+    @PostConstruct
+    private void init() {
         this.webClient = WebClient.builder()
-                .baseUrl("https://graph.facebook.com") // base da Graph API
+                .baseUrl(graphBaseUrl)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();
     }
@@ -62,7 +66,7 @@ public class WhatsAppGatewayMetaImpl {
         // A URL segue: /{version}/{phoneNumberId}/messages
         // Ex.: /v21.0/966475936553995/messages
         return webClient.post()
-                .uri("/v22.0/" + numberIdMeta + "/messages")
+                .uri("/" + graphVersion + "/" + numberIdMeta + "/messages")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token) // Bearer token enviado
                 .bodyValue(body)
                 .retrieve()
@@ -131,7 +135,7 @@ public class WhatsAppGatewayMetaImpl {
         log.info("[META][SEND_AUDIO][BYTES] bytesLength={}", audioBytes.length);
 
         WebClient graph = WebClient.builder()
-                .baseUrl("https://graph.facebook.com")
+                .baseUrl(graphBaseUrl)
                 .build();
 
         // 2) Upload da mídia
@@ -147,10 +151,10 @@ public class WhatsAppGatewayMetaImpl {
                 })
                 .header(HttpHeaders.CONTENT_TYPE, mimeType);
 
-        log.info("[META][SEND_AUDIO][UPLOAD][IN] endpoint=/v22.0/{}/media", numberIdMeta);
+        log.info("[META][SEND_AUDIO][UPLOAD][IN] endpoint=/{}/{}/media", graphVersion, numberIdMeta);
 
         String mediaId = graph.post()
-                .uri("/v22.0/{phoneNumberId}/media", numberIdMeta)
+                .uri("/" + graphVersion + "/{phoneNumberId}/media", numberIdMeta)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .contentType(MediaType.MULTIPART_FORM_DATA)
                 .bodyValue(mb.build())
@@ -181,11 +185,11 @@ public class WhatsAppGatewayMetaImpl {
                 "audio", Map.of("id", mediaId)
         );
 
-        log.info("[META][SEND_AUDIO][MESSAGE][IN] endpoint=/v22.0/{}/messages payload={}",
-                phoneNumberId, payload);
+        log.info("[META][SEND_AUDIO][MESSAGE][IN] endpoint=/{}/{}/messages payload={}",
+                graphVersion, phoneNumberId, payload);
 
         graph.post()
-                .uri("/v22.0/{phoneNumberId}/messages", phoneNumberId)
+                .uri("/" + graphVersion + "/{phoneNumberId}/messages", phoneNumberId)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(payload)
@@ -219,7 +223,7 @@ public class WhatsAppGatewayMetaImpl {
         }
 
         WebClient graph = WebClient.builder()
-                .baseUrl("https://graph.facebook.com")
+                .baseUrl(graphBaseUrl)
                 .build();
 
         Map<String, Object> payload = Map.of(
@@ -229,10 +233,10 @@ public class WhatsAppGatewayMetaImpl {
                 "audio", Map.of("id", mediaId)
         );
 
-        log.info("[META][SEND_AUDIO_MEDIA_ID][MESSAGE][IN] endpoint=/v22.0/{}/messages payload={}", phoneNumberId, payload);
+        log.info("[META][SEND_AUDIO_MEDIA_ID][MESSAGE][IN] endpoint=/{}/{}/messages payload={}", graphVersion, phoneNumberId, payload);
 
         graph.post()
-                .uri("/v22.0/{phoneNumberId}/messages", phoneNumberId)
+                .uri("/" + graphVersion + "/{phoneNumberId}/messages", phoneNumberId)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(payload)
@@ -280,7 +284,7 @@ public class WhatsAppGatewayMetaImpl {
         }
 
         WebClient graph = WebClient.builder()
-                .baseUrl("https://graph.facebook.com")
+                .baseUrl(graphBaseUrl)
                 .build();
 
         Map<String, Object> imagePayload = new java.util.HashMap<>();
@@ -296,10 +300,10 @@ public class WhatsAppGatewayMetaImpl {
                 "image", imagePayload
         );
 
-        log.info("[META][SEND_IMAGE_LINK][MESSAGE][IN] endpoint=/v22.0/{}/messages payload={}", phoneNumberId, payload);
+        log.info("[META][SEND_IMAGE_LINK][MESSAGE][IN] endpoint=/{}/{}/messages payload={}", graphVersion, phoneNumberId, payload);
 
         graph.post()
-                .uri("/v22.0/{phoneNumberId}/messages", phoneNumberId)
+                .uri("/" + graphVersion + "/{phoneNumberId}/messages", phoneNumberId)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(payload)
@@ -343,7 +347,7 @@ public class WhatsAppGatewayMetaImpl {
         String filename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "media";
 
         WebClient graph = WebClient.builder()
-                .baseUrl("https://graph.facebook.com")
+                .baseUrl(graphBaseUrl)
                 .build();
 
         MultipartBodyBuilder mb = new MultipartBodyBuilder();
@@ -357,7 +361,7 @@ public class WhatsAppGatewayMetaImpl {
         }).header(HttpHeaders.CONTENT_TYPE, mimeType);
 
         String mediaId = graph.post()
-                .uri("/v22.0/{phoneNumberId}/media", phoneNumberId)
+                .uri("/" + graphVersion + "/{phoneNumberId}/media", phoneNumberId)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .contentType(MediaType.MULTIPART_FORM_DATA)
                 .bodyValue(mb.build())
@@ -400,7 +404,7 @@ public class WhatsAppGatewayMetaImpl {
         }
 
         WebClient graph = WebClient.builder()
-                .baseUrl("https://graph.facebook.com")
+                .baseUrl(graphBaseUrl)
                 .build();
 
         Map<String, Object> mediaPayload = new HashMap<>();
@@ -415,10 +419,10 @@ public class WhatsAppGatewayMetaImpl {
         payload.put("type", type.toLowerCase());
         payload.put(type.toLowerCase(), mediaPayload);
 
-        log.info("[META][SEND_MEDIA_ID][MESSAGE][IN] endpoint=/v22.0/{}/messages payload={}", phoneNumberId, payload);
+        log.info("[META][SEND_MEDIA_ID][MESSAGE][IN] endpoint=/{}/{}/messages payload={}", graphVersion, phoneNumberId, payload);
 
         graph.post()
-                .uri("/v22.0/{phoneNumberId}/messages", phoneNumberId)
+                .uri("/" + graphVersion + "/{phoneNumberId}/messages", phoneNumberId)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(payload)
@@ -465,7 +469,7 @@ public class WhatsAppGatewayMetaImpl {
         String mediaType = type.toLowerCase();
 
         WebClient graph = WebClient.builder()
-                .baseUrl("https://graph.facebook.com")
+                .baseUrl(graphBaseUrl)
                 .build();
 
         Map<String, Object> mediaPayload = new HashMap<>();
@@ -486,10 +490,10 @@ public class WhatsAppGatewayMetaImpl {
         payload.put("type", mediaType);
         payload.put(mediaType, mediaPayload);
 
-        log.info("[META][SEND_MEDIA_LINK][MESSAGE][IN] endpoint=/v22.0/{}/messages payload={}", phoneNumberId, payload);
+        log.info("[META][SEND_MEDIA_LINK][MESSAGE][IN] endpoint=/{}/{}/messages payload={}", graphVersion, phoneNumberId, payload);
 
         graph.post()
-                .uri("/v22.0/{phoneNumberId}/messages", phoneNumberId)
+                .uri("/" + graphVersion + "/{phoneNumberId}/messages", phoneNumberId)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(payload)
