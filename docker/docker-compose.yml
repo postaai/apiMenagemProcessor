@@ -9,6 +9,10 @@ services:
       MONGO_DATABASE_URI: ${MONGO_DATABASE_URI:?Defina MONGO_DATABASE_URI no ambiente}
       SPRING_DATA_MONGODB_DATABASE: ${SPRING_DATA_MONGODB_DATABASE:?Defina o banco MongoDB no ambiente}
       HOSTPROCESSOR: ${HOSTPROCESSOR:?Defina HOSTPROCESSOR no ambiente}
+      EVOLUTION_HOST: ${EVOLUTION_HOST:?Defina EVOLUTION_HOST no ambiente}
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY:-vision-api-key}
+      META_GRAPH_BASE_URL: ${META_GRAPH_BASE_URL:?Defina META_GRAPH_BASE_URL no ambiente}
+      META_GRAPH_VERSION: ${META_GRAPH_VERSION:?Defina META_GRAPH_VERSION no ambiente}
       JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=60.0 -XX:+ExitOnOutOfMemoryError}
     security_opt:
       - no-new-privileges:true
